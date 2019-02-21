@@ -1,6 +1,11 @@
 """A set of common utilities for calculation of the Observational Large Ensemble.
 
 """
+from scipy import signal
+from netCDF4 import Dataset
+import numpy as np
+from glob import glob
+import pandas as pd
 
 
 def smooth(data, M):
@@ -21,8 +26,6 @@ def smooth(data, M):
         Indices associated with valid values. Can be used to subset the original time dimension for time series.
 
     """
-    import numpy as np
-    from scipy import signal
 
     if M % 2 == 0:  # even window
         M += 1
@@ -64,11 +67,6 @@ def forced_trend(varname, cvdp_loc):
         Units of the time variable
 
     """
-
-    from glob import glob
-    from netCDF4 import Dataset
-    import numpy as np
-
     if varname not in list(('tas', 'pr', 'slp')):
         print('Variable %s not currently supported' % varname)
         return
@@ -102,3 +100,40 @@ def forced_trend(varname, cvdp_loc):
         gm_em = np.mean(glob_mean, axis=0)
 
     return gm_em, gm_em_units, time, time_units
+
+
+def create_mode_df(fname):
+    """Return a dataframe with the mode time series (unfiltered) and preprocessed time columns.
+
+    Parameters
+    ----------
+    fname : str
+        Full path to file containing mode time series. Originally from CVDP.
+
+    Returns
+    -------
+    df : pandas dataframe
+        Dataframe with three modes and time variable.
+    """
+
+    ds = Dataset(fname, 'r')
+    time = ds['time'][:]
+    month = (time + 1) % 12
+    month[month == 0] += 12
+    month = month.compressed().astype(int)  # nothing is actually masked
+    season = [int(m % 12 + 3)//3 for m in month]
+    season_strs = ['DJF', 'MAM', 'JJA', 'SON']
+    season_names = [season_strs[counter - 1] for counter in season]
+    year = np.floor(1920 + (np.arange(1, len(month) + 1) - 0.5)/12).astype(int)
+
+    amo_ts = ds['amo_timeseries_mon'][:]
+
+    pdo_ts = ds['pdo_timeseries_mon'][:]
+
+    enso_ts = ds['nino34'][:]
+
+    df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'PDO', 'ENSO'])
+    df = df.assign(year=year, month=month, season=season_names,
+                   AMO=amo_ts, PDO=pdo_ts, ENSO=enso_ts)
+
+    return df
