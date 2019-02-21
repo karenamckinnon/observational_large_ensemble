@@ -172,7 +172,7 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
     nfft = np.shape(x)[0]
 
     nx = np.shape(x)[0]
-    k = np.min(np.round(2.*nw), nx)
+    k = min(np.round(2.*nw), nx)
     k = int(max(k-1, 1))
     s = np.arange(0, 1/dt, 1/(nfft*dt))
 
