@@ -139,7 +139,7 @@ def create_mode_df(fname):
     return df
 
 
-def pmtm(x, nw=3, cl=0.95, doplot=False):
+def pmtm(x, dt, nw=3, cl=0.95, doplot=False):
     """Returns Thomson’s multitaper power spectral density (PSD) estimate, pxx, of the input signal, x.
 
     Slightly modified from Peter Huybers's matlab code, pmtmPH.m
@@ -148,6 +148,8 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
     ----------
     x : numpy array
         Time series to analyze
+    dt : float
+        Time step
     nw : float
         The time-halfbandwidth product
     cl : float
@@ -168,7 +170,6 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
     from scipy.signal import windows
     import matplotlib.pyplot as plt
 
-    dt = 1  # time step
     nfft = np.shape(x)[0]
 
     nx = np.shape(x)[0]
