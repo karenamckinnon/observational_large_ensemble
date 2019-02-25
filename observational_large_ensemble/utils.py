@@ -165,7 +165,7 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
         Associated confidence interval
 
     """
-    import spectrum
+    from scipy.signal import windows
     import matplotlib.pyplot as plt
 
     dt = 1  # time step
@@ -177,7 +177,7 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
     s = np.arange(0, 1/dt, 1/(nfft*dt))
 
     # Compute the discrete prolate spheroidal sequences
-    [E, V] = spectrum.dpss(nx, nw, k)
+    [E, V] = windows.dpss(nx, nw, k, return_ratios=True)
 
     # Compute the windowed DFTs.
     Pk = np.abs(np.fft.fft(E*x[:, np.newaxis], nfft, axis=0))**2
