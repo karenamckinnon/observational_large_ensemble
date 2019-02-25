@@ -139,7 +139,7 @@ def create_mode_df(fname):
     return df
 
 
-def pmtm(x, dt, nw=3, cl=0.95, doplot=False):
+def pmtm(x, dt, nw=3, cl=0.95):
     """Returns Thomson’s multitaper power spectral density (PSD) estimate, pxx, of the input signal, x.
 
     Slightly modified from Peter Huybers's matlab code, pmtmPH.m
@@ -154,8 +154,6 @@ def pmtm(x, dt, nw=3, cl=0.95, doplot=False):
         The time-halfbandwidth product
     cl : float
         Confidence interval to calculate and display
-    doplot : logical
-        Indicate whether to create plot of resulting power spectra and uncertainty estimate
 
     Returns
     -------
@@ -168,7 +166,6 @@ def pmtm(x, dt, nw=3, cl=0.95, doplot=False):
 
     """
     from scipy.signal import windows
-    import matplotlib.pyplot as plt
 
     nfft = np.shape(x)[0]
 
@@ -225,19 +222,47 @@ def pmtm(x, dt, nw=3, cl=0.95, doplot=False):
     ci[:, 0] = 1./(1-2/(9*v) - 1.96*np.sqrt(2/(9*v)))**3
     ci[:, 1] = 1./(1-2/(9*v) + 1.96*np.sqrt(2/(9*v)))**3
 
-    if doplot:
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
-
-        ax.fill_between(s, P*ci[:, 0], P*ci[:, -1], color='lightgray', alpha=0.5, lw=0)
-        ax.plot(s, P)
-        ax.set_xscale('log')
-        ax.set_yscale('log')
-        ax.set_xlim(np.min(s), np.max(s))
-        ax.set_xticks([50**-1, 20**-1, 10**-1, 5**-1, 2**-1])
-        ax.set_xticklabels(['50', '20', '10', '5', '2'])
-        plt.xticks(fontsize=20)
-        plt.yticks(fontsize=20)
-        plt.xlabel('Period (yrs)', fontsize=20)
-        plt.ylabel('Power density', fontsize=20)
-
     return P, s, ci
+
+
+def plot_spectra(P, s, ci, savename=None):
+    """Make, display, and optionally save power spectrum plot.
+
+    Parameters
+    ----------
+    P : numpy array
+        PSD estimate
+    s : numpy array
+        Associated frequencies
+    ci : numpy array
+        Associated confidence interval
+    savename : str
+        Full filepath to save figure
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+        Figure handle
+    ax : matplotlib.axes._subplots.AxesSubplot
+        Axis handle
+    """
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
+
+    ax.fill_between(s, P*ci[:, 0], P*ci[:, -1], color='lightgray', alpha=0.5, lw=0)
+    ax.plot(s, P)
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.set_xlim(np.min(s), np.max(s))
+    ax.set_xticks([50**-1, 20**-1, 10**-1, 5**-1, 2**-1])
+    ax.set_xticklabels(['50', '20', '10', '5', '2'])
+    plt.xticks(fontsize=20)
+    plt.yticks(fontsize=20)
+    plt.xlabel('Period (yrs)', fontsize=20)
+    plt.ylabel('Power density', fontsize=20)
+
+    if savename is not None:
+        plt.savefig(savename)
+
+    return fig, ax
