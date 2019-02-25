@@ -178,6 +178,7 @@ def pmtm(x, nw=3, cl=0.95, doplot=False):
 
     # Compute the discrete prolate spheroidal sequences
     [E, V] = windows.dpss(nx, nw, k, return_ratios=True)
+    E = E.T
 
     # Compute the windowed DFTs.
     Pk = np.abs(np.fft.fft(E*x[:, np.newaxis], nfft, axis=0))**2
