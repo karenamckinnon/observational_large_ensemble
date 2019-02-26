@@ -309,5 +309,6 @@ def iaaft(x):
         delta_criterion = np.abs(criterion_new - criterion_old)
 
     x_new += xbar
+    x_new = np.real(x_new)
 
     return x_new
