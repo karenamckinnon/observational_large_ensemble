@@ -266,3 +266,48 @@ def plot_spectra(P, s, ci, savename=None):
         plt.savefig(savename)
 
     return fig, ax
+
+
+def iaaft(x):
+    """Return a surrogate time series based on IAAFT.
+
+    Parameters
+    ----------
+    x : numpy array
+        Original time series
+
+    Returns
+    -------
+    x_new : numpy array
+        Surrogate time series
+    """
+
+    xbar = np.mean(x)
+    x -= xbar  # remove mean
+    rank = np.argsort(x)
+    x_sort = x[rank]
+
+    I_k = np.abs(np.fft.fft(x))
+    x_new = np.random.choice(x, len(x), replace=False)
+
+    delta_criterion = 1
+    criterion_new = 100
+    while delta_criterion > 1e-8:
+        criterion_old = criterion_new
+        # iteration 1: spectral adjustment
+        x_old = x_new
+        x_fourier = np.fft.fft(x_old)
+        adjusted_coeff = I_k*x_fourier/np.abs(x_fourier)
+        x_new = np.fft.ifft(adjusted_coeff)
+
+        # iteration 2: amplitude adjustment
+        x_old = x_new
+        index = np.argsort(np.real(x_new))
+        x_new[index] = x_sort
+
+        criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
+        delta_criterion = np.abs(criterion_new - criterion_old)
+
+    x_new += xbar
+
+    return x_new
