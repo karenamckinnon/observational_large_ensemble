@@ -312,3 +312,56 @@ def iaaft(x):
     x_new = np.real(x_new)
 
     return x_new
+
+
+def create_matched_surrogates_1d(x, y):
+    """Create surrogate time series with enforced empirical coherence.
+
+    In the spectral domain, the model is
+    yhat = ahat*xhat + nhat
+
+    Thus, results will differ if x and y are switched.
+
+    The surrogate time series are produced via IAAFT.
+
+    Parameters
+    ----------
+    x : numpy array
+        The first (independent) time series
+    y : numpy array
+        The second (dependent) time series
+
+    Returns
+    -------
+    new_x : numpy array
+        A surrogate version of x
+    new_y : numpy array
+        A surrogate version of y
+    """
+
+    xhat = np.fft.fft(x)
+    yhat = np.fft.fft(y)
+
+    Phi_xx = np.dot(xhat[np.newaxis, :], np.conj(xhat[:, np.newaxis]))/len(xhat)
+    Phi_xy = np.dot(yhat[np.newaxis, :], np.conj(xhat[:, np.newaxis]))/len(xhat)
+
+    ahat = Phi_xy/Phi_xx
+    nhat = yhat - ahat*xhat
+
+    # Get new estimate of x
+    x_surr = iaaft(x)
+    # Fourier transform
+    x_surr_hat = np.fft.fft(x_surr)
+    # Get part of y that is coherent
+    y_coherent_hat = ahat*x_surr_hat
+
+    # Return to time domain
+    y_surr = np.real(np.fft.ifft(y_coherent_hat).flatten())
+
+    # Add random version of n
+    n_surr = iaaft(np.fft.ifft(nhat).flatten())
+
+    new_x = x_surr
+    new_y = y_surr + n_surr
+
+    return new_x, new_y
