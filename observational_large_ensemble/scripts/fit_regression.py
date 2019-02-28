@@ -5,6 +5,7 @@ from netCDF4 import Dataset
 import pandas as pd
 from observational_large_ensemble import utils as olens_utils
 import json
+import calendar
 
 
 def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
@@ -49,6 +50,16 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
 
         # Get the forced component
         gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
+
+        # If using precipitation, need number of days in month to convert units
+        if this_varname == 'pr':
+            gm_time = np.arange(1920 + 0.5/12, 1920 + 1/12*len(time), 1/12)
+            gm_year = np.floor(gm_time)
+            gm_month = np.ceil((gm_time - gm_year)*12)
+            days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(gm_year, gm_month)]
+            assert gm_em_units == 'mm/day'  # double check
+            gm_em *= days_per_month
+            gm_em_units = 'mm'
 
         # Get dataframe of modes
         df = olens_utils.create_mode_df(modes_fname)
