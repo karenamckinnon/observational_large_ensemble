@@ -7,7 +7,7 @@ from observational_large_ensemble import utils as olens_utils
 import json
 
 
-def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_lag, workdir_base):
+def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
 
     # Create dictionary of parameters to save in working directory
     param_dict = {'varname': varname,
@@ -42,6 +42,8 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
 
     # Loop through variables
     for v, f in zip(varname, filename):
+        if verbose:
+            print('Beginning fit for %s' % v)
         this_varname = v
         this_filename = f
 
@@ -116,7 +118,8 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
         # Predictors: constant, GM-EM (forced component), ENSO, PDO
         # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
         for mo in range(1, 13):  # months are 1-12
-
+            if verbose:
+                print('Month %i' % mo)
             predictand = X[X_month == mo, ...]
             predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
             predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
@@ -144,6 +147,8 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
             valid_indices = np.where(~np.isnan(beta[0, :]))[0]
             beta_AMO = np.zeros((n_ens_members, nlat*nlon))
             for kk in range(n_ens_members):
+                if verbose:
+                    print('Ensemble member %i' % kk)
                 res_smooth = np.zeros((nlat*nlon, len(AMO_smoothed)))
 
                 for ii in valid_indices:
@@ -159,6 +164,8 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
                 y_mat_AMO = np.matrix(res_smooth).T
                 beta_AMO[kk, :] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
 
+            if verbose:
+                print('Beginning saves')
             # Save beta values to netcdf
             for counter, p_name in enumerate(predictors_names):
                 this_beta = beta[counter, :].reshape((nlat, nlon))
@@ -202,8 +209,8 @@ if __name__ == '__main__':
     # Set of variables to analyze (user inputs)
     varname = ['tas']
     filename = ['/glade/work/mckinnon/BEST/Land_and_Ocean_LatLong1.nc']
-    n_ens_members = 10
-    AMO_smooth_length = 16  # number of years to apply AMO smoothing
+    n_ens_members = 100
+    AMO_smooth_length = 15  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
 
