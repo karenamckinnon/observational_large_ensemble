@@ -180,7 +180,7 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
                 nc_varname = '%s_coeff' % p_name
                 savename = '%sbeta%01d_month%02d.nc' % (workdir, counter, mo)
                 olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
-                                           savename, description, overwrite=True)
+                                           savename, description, overwrite=False)
 
             # Save residual variance
             description = 'Residual variance in %s from regression model. Month %i' % (this_varname, mo)
@@ -189,7 +189,7 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
 
             savename = '%sresidual_variance_month%02d.nc' % (workdir, mo)
             olens_utils.save_2d_netcdf(lat, lon, variance_estimator.reshape((nlat, nlon)),
-                                       nc_varname, units, savename, description, overwrite=True)
+                                       nc_varname, units, savename, description, overwrite=False)
 
             # Save AMO samples
             for kk in range(n_ens_members):
@@ -201,7 +201,7 @@ def fit_linear_model(varname, filename, n_ens_members, AMO_smooth_length, mode_l
                 nc_varname = 'AMO_coeff'
                 savename = '%sbetaAMO_member%03d_month%02d.nc' % (workdir, kk, mo)
                 olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
-                                           savename, description, overwrite=True)
+                                           savename, description, overwrite=False)
 
 
 if __name__ == '__main__':
