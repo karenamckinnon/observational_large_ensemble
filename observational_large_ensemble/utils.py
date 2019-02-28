@@ -6,6 +6,7 @@ from netCDF4 import Dataset
 import numpy as np
 from glob import glob
 import pandas as pd
+import os
 
 
 def smooth(data, M):
@@ -367,7 +368,7 @@ def create_matched_surrogates_1d(x, y):
     return new_x, new_y
 
 
-def save_2d_netcdf(lat, lon, vals, varname, units, savename, description):
+def save_2d_netcdf(lat, lon, vals, varname, units, savename, description, overwrite=False):
     """Save a two-dim (lat, lon) variable to netcdf.
 
     Parameters
@@ -384,31 +385,41 @@ def save_2d_netcdf(lat, lon, vals, varname, units, savename, description):
         Full path to location where values should be saved
     description : str
         Short description of what is saved in the netcdf
+    overwrite : boolean
+        Indicator of whether or not to overwrite existing file
 
     Returns
     -------
     Nothing.
 
     """
-    fout = Dataset(savename, 'w')
+    fileexists = os.path.isfile(savename)
+    if (fileexists & overwrite) | (not fileexists):
 
-    nlat = len(lat)
-    nlon = len(lon)
-    fout.createDimension('lat', nlat)
-    fout.createDimension('lon', nlon)
+        if fileexists:  # remove if we want to create a new version
+            os.remove(savename)
 
-    latnc = fout.createVariable('lat', 'f8', ('lat',))
-    lonnc = fout.createVariable('lon', 'f8', ('lon',))
-    varnc = fout.createVariable(varname, 'f8', ('lat', 'lon'))
+        fout = Dataset(savename, 'w')
 
-    fout.description = description
+        nlat = len(lat)
+        nlon = len(lon)
+        fout.createDimension('lat', nlat)
+        fout.createDimension('lon', nlon)
 
-    latnc.units = 'degree_north'
-    lonnc.units = 'degree_east'
-    varnc.units = units
+        latnc = fout.createVariable('lat', 'f8', ('lat',))
+        lonnc = fout.createVariable('lon', 'f8', ('lon',))
+        varnc = fout.createVariable(varname, 'f8', ('lat', 'lon'))
 
-    latnc[:] = lat
-    lonnc[:] = lon
-    varnc[:, :] = vals
+        fout.description = description
 
-    fout.close()
+        latnc.units = 'degree_north'
+        lonnc.units = 'degree_east'
+        varnc.units = units
+
+        latnc[:] = lat
+        lonnc[:] = lon
+        varnc[:, :] = vals
+
+        fout.close()
+
+    return
