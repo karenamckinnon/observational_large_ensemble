@@ -365,3 +365,50 @@ def create_matched_surrogates_1d(x, y):
     new_y = y_surr + n_surr
 
     return new_x, new_y
+
+
+def save_2d_netcdf(lat, lon, vals, varname, units, savename, description):
+    """Save a two-dim (lat, lon) variable to netcdf.
+
+    Parameters
+    ----------
+    lat : numpy array
+        Latitude (degrees north)
+    lon : numpy array
+        Longitude (degrees east)
+    vals : numpy array
+        Data to be saved
+    units : str
+        Name of units for vals
+    savename : str
+        Full path to location where values should be saved
+    description : str
+        Short description of what is saved in the netcdf
+
+    Returns
+    -------
+    Nothing.
+
+    """
+    fout = Dataset(savename, 'w')
+
+    nlat = len(lat)
+    nlon = len(lon)
+    fout.createDimension('lat', nlat)
+    fout.createDimension('lon', nlon)
+
+    latnc = fout.createVariable('lat', 'f8', ('lat',))
+    lonnc = fout.createVariable('lon', 'f8', ('lon',))
+    varnc = fout.createVariable(varname, 'f8', ('lat', 'lon'))
+
+    fout.description = description
+
+    latnc.units = 'degree_north'
+    lonnc.units = 'degree_east'
+    varnc.units = units
+
+    latnc[:] = lat
+    lonnc[:] = lon
+    varnc[:, :] = vals
+
+    fout.close()
