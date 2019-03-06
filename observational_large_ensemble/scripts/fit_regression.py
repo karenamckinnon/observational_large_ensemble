@@ -8,7 +8,7 @@ import json
 import calendar
 
 
-def fit_linear_model(varname, month, filename, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
+def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
 
     # Create dictionary of parameters to save in working directory
     param_dict = {'varname': varname,
