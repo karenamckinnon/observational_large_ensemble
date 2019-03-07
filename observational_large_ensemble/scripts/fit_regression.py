@@ -6,6 +6,7 @@ import pandas as pd
 from observational_large_ensemble import utils as olens_utils
 import json
 import calendar
+from cftime import utime
 
 
 def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
@@ -23,8 +24,8 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
     cvdp_loc = '/glade/work/mckinnon/CVDP'
     modes_fname = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc  # modes
 
-    # Output folder
-    now = datetime.strftime(datetime.now(), '%Y%m%d_%H%M')
+    # Output folder, named with current date
+    now = datetime.strftime(datetime.now(), '%Y%m%d')
     workdir = '%s/%s/' % (workdir_base, now)
     if not os.path.isdir(workdir):
         os.mkdir(workdir)
@@ -33,6 +34,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
     with open(workdir + 'parameter_set.json', 'w') as f:
         json.dump(param_dict, f)
 
+    # Convert non standard names to standard
     name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
     if AMO_smooth_length % 2 == 0:
         AMO_smooth_length += 1
@@ -48,8 +50,16 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         this_varname = v
         this_filename = f
 
+        var_dir = '%s%s/' % (workdir, this_varname)
+        if not os.path.isdir(var_dir):
+            os.mkdir(var_dir)
+
         # Get the forced component
+        # Assume that the global mean trend in sea level is zero
         gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
+        if this_varname == 'slp':
+            gm_em, gm_em_units, time, time_units = olens_utils.forced_trend('tas', cvdp_loc)
+            gm_em *= 0
 
         # If using precipitation, need number of days in month to convert units
         if this_varname == 'pr':
@@ -79,13 +89,16 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         subset = np.isin(df['year'].values, valid_years)
         df = df.loc[subset, :]
 
-        # Load dataset being used for creating ObsLE
+        # Load dataset
         ds = Dataset(this_filename, 'r')
-        if this_varname not in ds.variables:
+
+        # Adjust variable names if necessary
+        if this_varname not in name_conversion:
             this_varname2 = name_conversion[this_varname]
         else:
             this_varname2 = this_varname
 
+        # Load data
         try:
             lat = ds['latitude'][:]
             lon = ds['longitude'][:]
@@ -97,14 +110,18 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         X_time = ds['time'][:]
         X_time_units = ds['time'].units
 
-        # Messy code dealing with various time units
+        # Code dealing with various time units
         if X_time_units == 'year A.D.':
             X_time = X_time.compressed()  # saved as masked array, but no values are masked
             X_year = np.floor(X_time)
-            subset = np.isin(X_year, valid_years)
+            X_month = (np.ceil((X_time - X_year)*12)).astype(int)
+
         else:
-            print('Need to code this')
-            raise KeyboardInterrupt
+            # For more standard time formats
+            cld = utime(X_time_units)
+            dt = cld.num2date(X_time)
+            X_year = np.array([t.year for t in dt])
+            X_month = np.array([t.month for t in dt])
 
         # Permute all data to be time, lat, lon
         lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
@@ -115,10 +132,10 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         ntime, nlat, nlon = np.shape(X)
 
         # Subset data
+        subset = np.isin(X_year, valid_years)
         X = X[subset, :]
-        X_time = X_time[subset]
-        X_year = np.floor(X_time)
-        X_month = (np.ceil((X_time - X_year)*12)).astype(int)
+        X_year = X_year[subset]
+        X_month = X_month[subset]
 
         ntime, nlat, nlon = np.shape(X)
 
@@ -131,6 +148,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         mo = int(month)
         if verbose:
             print('Month %i' % mo)
+
         predictand = X[X_month == mo, ...]
         predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
         predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
@@ -194,7 +212,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
                 units = '%s/deg C' % X_units
 
             nc_varname = '%s_coeff' % p_name
-            savename = '%sbeta%01d_month%02d.nc' % (workdir, counter, mo)
+            savename = '%sbeta%01d_month%02d.nc' % (var_dir, counter, mo)
             olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
                                        savename, description, overwrite=False)
 
@@ -203,14 +221,22 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         units = '%s**2' % X_units
         nc_varname = 'res_variance'
 
-        savename = '%sresidual_variance_month%02d.nc' % (workdir, mo)
+        savename = '%sresidual_variance_month%02d.nc' % (var_dir, mo)
         olens_utils.save_2d_netcdf(lat, lon, variance_estimator.reshape((nlat, nlon)),
                                    nc_varname, units, savename, description, overwrite=False)
 
         all_predictors = predictors_names + ('AMO',)
+
+        for p_name in all_predictors:
+            beta_dir = '%s%s/' % (var_dir, p_name)
+            if not os.path.isdir(beta_dir):
+                os.path.mkdir(beta_dir)
+
         # Save samples of beta parameters
         for kk in range(n_ens_members):
             for counter, p_name in enumerate(all_predictors):
+
+                beta_dir = '%s%s/' % (var_dir, p_name)
                 this_beta = BETA[kk, :, counter].reshape((nlat, nlon))
                 if p_name == 'AMO':
                     description = ('%s regression model, AMO term using %i year smoothing. Month %i' %
@@ -227,7 +253,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
                     units = '%s/deg C' % X_units
 
                 nc_varname = '%s_coeff' % p_name
-                savename = '%sbeta_%s_member%03d_month%02d.nc' % (workdir, p_name,  kk, mo)
+                savename = '%sbeta_%s_member%03d_month%02d.nc' % (beta_dir, p_name,  kk, mo)
                 olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
                                            savename, description, overwrite=False)
 
