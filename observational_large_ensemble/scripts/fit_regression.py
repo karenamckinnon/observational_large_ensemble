@@ -56,10 +56,11 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
 
         # Get the forced component
         # Assume that the global mean trend in sea level is zero
-        gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
         if this_varname == 'slp':
             gm_em, gm_em_units, time, time_units = olens_utils.forced_trend('tas', cvdp_loc)
             gm_em *= 0
+        else:
+            gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
 
         # If using precipitation, need number of days in month to convert units
         if this_varname == 'pr':
@@ -135,6 +136,10 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         X = X[subset, :]
         X_year = X_year[subset]
         X_month = X_month[subset]
+
+        # Also need to check if our data spans the full valid period
+        subset = np.isin(df['year'].values, X_year)
+        df = df.loc[subset, :]
 
         ntime, nlat, nlon = np.shape(X)
 
@@ -268,7 +273,7 @@ if __name__ == '__main__':
     # Set of variables to analyze (user inputs)
     varname = ['tas']
     filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc']
-    n_ens_members = 100
+    n_ens_members = 5
     AMO_smooth_length = 15  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
