@@ -59,6 +59,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         if this_varname == 'slp':
             gm_em, gm_em_units, time, time_units = olens_utils.forced_trend('tas', cvdp_loc)
             gm_em *= 0
+            gm_em += 1  # will replace constant
         else:
             gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
 
@@ -150,8 +151,6 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         # Predictors: constant, GM-EM (forced component), ENSO, PDO
         # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
         mo = int(month)
-        if verbose:
-            print('Month %i' % mo)
 
         predictand = X[X_month == mo, ...]
         predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
@@ -160,6 +159,8 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
 
         y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))
         X_mat = np.matrix(predictors)
+        if (np.std(gm_em) == 0):   # case of no forced trend
+            X_mat = X_mat[:, 1:]
         beta = (np.dot(np.dot((np.dot(X_mat.T, X_mat)).I, X_mat.T), y_mat))  # Max likelihood estimate
         yhat = np.dot(X_mat, beta)
         residual = y_mat - yhat
@@ -181,6 +182,9 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         beta = np.array(beta)
         valid_indices = np.where(~np.isnan(beta[0, :]))[0]
         n_total_predictors = len(predictors_names) + 1  # above predictors + AMO
+        if (np.std(gm_em) == 0):
+            n_total_predictors -= 1  # case for no forced trend
+
         BETA = np.zeros((n_ens_members, nlat*nlon, n_total_predictors))
         for kk in range(n_ens_members):
             if verbose:
@@ -204,6 +208,10 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
 
         if verbose:
             print('Beginning saves')
+
+        if (np.std(gm_em) == 0):  # remove trend predictor
+            predictors_names = predictors_names[:1] + predictors_names[2:]
+
         # Save beta values to netcdf
         for counter, p_name in enumerate(predictors_names):
             this_beta = beta[counter, :].reshape((nlat, nlon))
