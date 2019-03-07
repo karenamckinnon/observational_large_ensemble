@@ -7,6 +7,7 @@ from observational_large_ensemble import utils as olens_utils
 import json
 import calendar
 from cftime import utime
+from glob import glob
 
 
 def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
@@ -152,6 +153,15 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
         predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
         predictors_names = 'constant', 'forcing', 'ENSO', 'PDO'
+
+        # Check if we've already done these regressions
+        file_count = np.empty((5, ), dtype=int)
+        for counter, p in enumerate(predictors_names + ('AMO',)):
+            existing_files = glob('%s%s/beta_%s_member*_month%02d.nc' % (var_dir, p, p, mo))
+            file_count[counter] = len(existing_files)
+
+        if np.mean(existing_files) == n_ens_members:
+            continue
 
         y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))
         X_mat = np.matrix(predictors)
