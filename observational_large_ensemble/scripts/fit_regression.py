@@ -92,12 +92,6 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         # Load dataset
         ds = Dataset(this_filename, 'r')
 
-        # Adjust variable names if necessary
-        if this_varname not in name_conversion:
-            this_varname2 = name_conversion[this_varname]
-        else:
-            this_varname2 = this_varname
-
         # Load data
         try:
             lat = ds['latitude'][:]
@@ -105,8 +99,13 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         except IndexError:
             lat = ds['lat'][:]
             lon = ds['lon'][:]
-        X = ds[this_varname2][:, :, :]
-        X_units = ds[this_varname2].units
+        try:
+            X = ds[this_varname][:, :, :]
+            X_units = ds[this_varname].units
+        except IndexError:
+            alt_name = name_conversion[this_varname]
+            X = ds[alt_name][:, :, :]
+            X_units = ds[alt_name].units
         X_time = ds['time'][:]
         X_time_units = ds['time'].units
 
