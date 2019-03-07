@@ -39,10 +39,6 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
     if AMO_smooth_length % 2 == 0:
         AMO_smooth_length += 1
 
-    # Fit linear regression model to data
-    # Put into large function later to pass dictionary of variables
-    # So this applies to a single variable
-
     # Loop through variables
     for v, f in zip(varname, filename):
         if verbose:
@@ -279,9 +275,11 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Set of variables to analyze (user inputs)
-    varname = ['tas']
-    filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc']
-    n_ens_members = 5
+    varname = ['tas', 'pr', 'slp']
+    filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
+                '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v7.nc',
+                '/glade/work/mckinnon/20CRv2c/prmsl.mon.mean.nc']
+    n_ens_members = 100
     AMO_smooth_length = 15  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'

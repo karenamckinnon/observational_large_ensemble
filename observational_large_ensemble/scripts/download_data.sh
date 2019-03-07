@@ -3,9 +3,7 @@
 datadir=/glade/work/mckinnon
 
 # BEST
-# http://berkeleyearth.lbl.gov/auto/Global/Gridded/Land_and_Ocean_LatLong1.nc
-
-best_url=http://berkeleyearth.lbl.gov/auto/Global/Gridded/Land_and_Ocean_LatLong1.nc
+best_url=http://berkeleyearth.lbl.gov/auto/Global/Gridded/Complete_TAVG_LatLong1.nc
 best_readme=http://berkeleyearth.lbl.gov/auto/Global/Gridded/Gridded_README.txt
 
 mkdir -p "$datadir"/BEST
@@ -19,10 +17,10 @@ mkdir -p "$datadir"/GPCC
 wget -N -P "$datadir"/GPCC $gpcc_url
 
 # SLP from 20CRv2
-20cr_url=ftp://ftp.cdc.noaa.gov/Datasets/20thC_ReanV2/Monthlies/monolevel/prmsl.mon.mean.nc
+20cr_url=ftp://ftp.cdc.noaa.gov/Datasets/20thC_ReanV2c/Monthlies/monolevel/prmsl.mon.mean.nc
 
-mkdir -p "$datadir"/20CR
-wget -N -P "$datadir"/20CR $20cr_url
+mkdir -p "$datadir"/20CRv2c
+wget -N -P "$datadir"/20CRv2c $20cr_url
 
 # SST modes
 enso_url=https://www.esrl.noaa.gov/psd/gcos_wgsp/Timeseries/Data/nino34.long.data
