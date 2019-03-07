@@ -242,7 +242,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         for p_name in all_predictors:
             beta_dir = '%s%s/' % (var_dir, p_name)
             if not os.path.isdir(beta_dir):
-                os.path.mkdir(beta_dir)
+                os.mkdir(beta_dir)
 
         # Save samples of beta parameters
         for kk in range(n_ens_members):
