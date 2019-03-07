@@ -1,5 +1,6 @@
 from observational_large_ensemble import utils as olens_utils
 import numpy as np
+import os
 
 
 def create_surrogate_modes(n_ens_members, workdir_base):
@@ -22,7 +23,10 @@ def create_surrogate_modes(n_ens_members, workdir_base):
         amo_surr[:, kk] = olens_utils.iaaft(df['AMO'].values)
 
     # Save
-    saveloc = '%s/surrogates/time_series_%03d.npz' % (workdir_base, n_ens_members)
+    savedir = '%s/surrogates/' % workdir_base
+    if not os.path.isdir(savedir):
+        os.mkdir(savedir)
+    saveloc = '%stime_series_%03d.npz' % (savedir, n_ens_members)
     np.savez(saveloc,
              enso_surr=enso_surr,
              pdo_surr=pdo_surr,
