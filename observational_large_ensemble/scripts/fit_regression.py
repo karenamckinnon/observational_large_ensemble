@@ -76,7 +76,7 @@ def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, mo
                                    savename, description, overwrite=False)
 
 
-def get_obs(this_varname, this_filename, month, valid_years, mode_lag, cvdp_loc):
+def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     """Return observational data and associated time series of modes for a given variable.
     """
 
@@ -235,5 +235,5 @@ if __name__ == '__main__':
 
     # Get data and modes
     for v, f in zip(varname, filename):
-        X, X_units, lat, lon, X_year, X_month, df = get_obs(v, f, args.month, valid_years, mode_lag, cvdp_loc)
+        X, X_units, lat, lon, X_year, X_month, df = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
         fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, v, args.month, AMO_smooth_length, workdir)
