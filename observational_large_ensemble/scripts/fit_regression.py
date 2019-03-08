@@ -13,8 +13,6 @@ def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, mo
     """Save linear regression model parameters.
     """
 
-    if AMO_smooth_length % 2 == 0:
-        AMO_smooth_length += 1
     ntime, nlat, nlon = np.shape(X)
 
     # Fit OLS model to variable X (deterministic)
@@ -227,6 +225,10 @@ if __name__ == '__main__':
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
     valid_years = np.arange(1921, 2017)
     cvdp_loc = '/glade/work/mckinnon/CVDP'
+
+    # Need odd-window for AMO
+    if AMO_smooth_length % 2 == 0:
+        AMO_smooth_length += 1
 
     # Save parameter files
     workdir = setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base)
