@@ -22,6 +22,17 @@ def create_surrogate_modes(n_ens_members, workdir_base):
                                                                                      df['PDO'].values)
         amo_surr[:, kk] = olens_utils.iaaft(df['AMO'].values)
 
+    # The IAAFT algorithm is not effectively preserving the annual cycle of ENSO amplitudes
+    # While not ideal, going to manually reweight the variances by month
+    monthly_var_enso = (df.groupby('month').std()['ENSO'])**2
+    for kk in range(n_ens_members):
+        surr_df = pd.DataFrame()
+        surr_df = surr_df.assign(month=df['month'].values, surrogate=enso_surr[:, kk])
+        surr_var = (surr_df.groupby('month').std()['surrogate'])**2
+        weights = np.sqrt(monthly_var_enso/surr_var)
+        weights /= np.mean(weights)
+        enso_surr[:, kk] *= np.tile(weights.values, int(len(df)/12))
+
     # Save
     savedir = '%s/surrogates/' % workdir_base
     if not os.path.isdir(savedir):
