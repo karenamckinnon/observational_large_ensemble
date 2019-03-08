@@ -1,6 +1,7 @@
 from observational_large_ensemble import utils as olens_utils
 import numpy as np
 import os
+import pandas as pd
 
 
 def create_surrogate_modes(n_ens_members, workdir_base):
