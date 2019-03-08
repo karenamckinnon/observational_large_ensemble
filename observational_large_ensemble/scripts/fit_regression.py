@@ -202,9 +202,9 @@ def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
     workdir = '%s/%s/' % (workdir_base, now)
     if not os.path.isdir(workdir):
         os.mkdir(workdir)
-        # Save parameter set to director
-        with open(workdir + 'parameter_set.json', 'w') as f:
-            json.dump(param_dict, f)
+    # Save parameter set to director
+    with open(workdir + 'parameter_set.json', 'w') as f:
+        json.dump(param_dict, f)
 
     return workdir
 
