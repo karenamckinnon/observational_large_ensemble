@@ -160,7 +160,7 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
             existing_files = glob('%s%s/beta_%s_member*_month%02d.nc' % (var_dir, p, p, mo))
             file_count[counter] = len(existing_files)
 
-        if np.mean(existing_files) == n_ens_members:
+        if (file_count == n_ens_members).all():  # If all ensemble members are present
             continue
 
         y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))

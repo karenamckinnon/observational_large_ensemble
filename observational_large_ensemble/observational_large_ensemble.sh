@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# TODO: command line args for ObsLE parameters
+
 # Download data
 source ./scripts/download_data.sh
 
