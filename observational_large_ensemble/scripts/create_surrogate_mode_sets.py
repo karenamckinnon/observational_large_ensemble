@@ -27,7 +27,11 @@ def create_surrogate_modes(n_ens_members, workdir_base):
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
     saveloc = '%stime_series_%03d.npz' % (savedir, n_ens_members)
+
+    # Note that the years don't mean anything for the surrogates, but the months do
     np.savez(saveloc,
+             years=df['year'].values,
+             months=df['month'].values,
              enso_surr=enso_surr,
              pdo_surr=pdo_surr,
              amo_surr=amo_surr)
@@ -35,7 +39,11 @@ def create_surrogate_modes(n_ens_members, workdir_base):
 
 if __name__ == '__main__':
 
-    n_ens_members = 100
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('n_ens_members', type=int, help='Number of surrogate time series to create.')
+    args = parser.parse_args()
+
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
 
-    create_surrogate_modes(n_ens_members, workdir_base)
+    create_surrogate_modes(args.n_ens_members, workdir_base)
