@@ -7,15 +7,13 @@ from observational_large_ensemble import utils as olens_utils
 import json
 import calendar
 from cftime import utime
-from glob import glob
 
 
-def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
+def fit_linear_model(varname, filename, month, AMO_smooth_length, mode_lag, workdir_base, verbose=True):
 
     # Create dictionary of parameters to save in working directory
     param_dict = {'varname': varname,
                   'filename': filename,
-                  'n_ens_members': n_ens_members,
                   'AMO_smooth_length': AMO_smooth_length,
                   'mode_lag': mode_lag}
 
@@ -152,16 +150,10 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         predictand = X[X_month == mo, ...]
         predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
         predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
-        predictors_names = 'constant', 'forcing', 'ENSO', 'PDO'
+        predictors_names = 'constant', 'forcing', 'ENSO', 'PDO', 'AMO'
 
-        # Check if we've already done these regressions
-        file_count = np.empty((5, ), dtype=int)
-        for counter, p in enumerate(predictors_names + ('AMO',)):
-            existing_files = glob('%s%s/beta_%s_member*_month%02d.nc' % (var_dir, p, p, mo))
-            file_count[counter] = len(existing_files)
-
-        if (file_count == n_ens_members).all():  # If all ensemble members are present
-            continue
+        if (np.std(gm_em) == 0):  # remove trend predictor
+            predictors_names = predictors_names[:1] + predictors_names[2:]
 
         y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))
         X_mat = np.matrix(predictors)
@@ -170,57 +162,34 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
         beta = (np.dot(np.dot((np.dot(X_mat.T, X_mat)).I, X_mat.T), y_mat))  # Max likelihood estimate
         yhat = np.dot(X_mat, beta)
         residual = y_mat - yhat
-
-        # Calculate variance/covariance matrix for each gridbox for resampling
-        variance_estimator = np.ma.var(np.array(residual), axis=0, ddof=2)
-        denom_C = (np.dot(X_mat.T, X_mat)).I
+        residual = np.array(residual)
 
         # Fit AMO to the residual
         # Have to treat separately because performing smoothing
         AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[df['month'] == mo, 'AMO'].values,
                                                          M=AMO_smooth_length)
 
-        # In order to allow for some covariance between AMO fit and prior regression fit,
-        # will fit AMO model to various realizations of the initial fit
-        # The below code is _not_ deterministic because we are sampling from the variance-covariance matrix of beta
-        # Need to keep consistent seed
-        np.random.seed(123)
-        beta = np.array(beta)
-        valid_indices = np.where(~np.isnan(beta[0, :]))[0]
-        n_total_predictors = len(predictors_names) + 1  # above predictors + AMO
-        if (np.std(gm_em) == 0):
-            n_total_predictors -= 1  # case for no forced trend
+        BETA = np.empty((len(predictors_names), nlat*nlon))
+        BETA[:-1, :] = np.array(beta)
 
-        BETA = np.zeros((n_ens_members, nlat*nlon, n_total_predictors))
-        for kk in range(n_ens_members):
-            if verbose:
-                print('Ensemble member %i' % kk)
-            res_smooth = np.zeros((nlat*nlon, len(AMO_smoothed)))
+        valid_indices = np.where(~np.isnan(BETA[0, :]))[0]
 
-            for ii in valid_indices:
-                this_beta = beta[:, ii]
+        residual_smooth = np.zeros((nlat*nlon, len(AMO_smoothed)))
 
-                # Get sample of beta terms
-                sample = np.random.multivariate_normal(this_beta, variance_estimator[ii]*denom_C)
-                BETA[kk, ii, :-1] = sample
+        for ii in valid_indices:
+            residual_smooth[ii, :], _ = olens_utils.smooth(residual[:, ii],
+                                                           M=AMO_smooth_length)
 
-                # Fit model, and calculate residual
-                yhat = np.dot(X_mat, sample).T
-                res = np.array(y_mat[:, ii] - yhat).flatten()
-                res_smooth[ii, :], _ = olens_utils.smooth(res, M=AMO_smooth_length)
-            X_mat_AMO = np.matrix(AMO_smoothed).T
-            y_mat_AMO = np.matrix(res_smooth).T
-            BETA[kk, :, -1] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
+        X_mat_AMO = np.matrix(AMO_smoothed).T
+        y_mat_AMO = np.matrix(residual_smooth).T
+        BETA[-1, :] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
 
         if verbose:
             print('Beginning saves')
 
-        if (np.std(gm_em) == 0):  # remove trend predictor
-            predictors_names = predictors_names[:1] + predictors_names[2:]
-
         # Save beta values to netcdf
         for counter, p_name in enumerate(predictors_names):
-            this_beta = beta[counter, :].reshape((nlat, nlon))
+            this_beta = BETA[counter, :].reshape((nlat, nlon))
             description = '%s regression model, %s term. Month %i' % (this_varname, p_name, mo)
             if p_name == 'constant':
                 units = X_units
@@ -233,47 +202,6 @@ def fit_linear_model(varname, filename, month, n_ens_members, AMO_smooth_length,
             savename = '%sbeta%01d_month%02d.nc' % (var_dir, counter, mo)
             olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
                                        savename, description, overwrite=False)
-
-        # Save residual variance
-        description = 'Residual variance in %s from regression model. Month %i' % (this_varname, mo)
-        units = '%s**2' % X_units
-        nc_varname = 'res_variance'
-
-        savename = '%sresidual_variance_month%02d.nc' % (var_dir, mo)
-        olens_utils.save_2d_netcdf(lat, lon, variance_estimator.reshape((nlat, nlon)),
-                                   nc_varname, units, savename, description, overwrite=False)
-
-        all_predictors = predictors_names + ('AMO',)
-
-        for p_name in all_predictors:
-            beta_dir = '%s%s/' % (var_dir, p_name)
-            if not os.path.isdir(beta_dir):
-                os.mkdir(beta_dir)
-
-        # Save samples of beta parameters
-        for kk in range(n_ens_members):
-            for counter, p_name in enumerate(all_predictors):
-
-                beta_dir = '%s%s/' % (var_dir, p_name)
-                this_beta = BETA[kk, :, counter].reshape((nlat, nlon))
-                if p_name == 'AMO':
-                    description = ('%s regression model, AMO term using %i year smoothing. Month %i' %
-                                   (this_varname, AMO_smooth_length, mo))
-                else:
-                    description = ('%s regression model, %s term. Month %i' %
-                                   (this_varname, p_name, mo))
-
-                if p_name == 'constant':
-                    units = '%s' % X_units
-                elif p_name == 'forcing':
-                    units = 'unitless'
-                else:
-                    units = '%s/deg C' % X_units
-
-                nc_varname = '%s_coeff' % p_name
-                savename = '%sbeta_%s_member%03d_month%02d.nc' % (beta_dir, p_name,  kk, mo)
-                olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
-                                           savename, description, overwrite=False)
 
 
 if __name__ == '__main__':
@@ -289,9 +217,8 @@ if __name__ == '__main__':
     filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
                 '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v7.nc',
                 '/glade/work/mckinnon/20CRv2c/prmsl.mon.mean.nc']
-    n_ens_members = 100
     AMO_smooth_length = 15  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
 
-    fit_linear_model(varname, filename, args.month, n_ens_members, AMO_smooth_length, mode_lag, workdir_base)
+    fit_linear_model(varname, filename, args.month, AMO_smooth_length, mode_lag, workdir_base)
