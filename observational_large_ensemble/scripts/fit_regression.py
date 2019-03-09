@@ -115,13 +115,13 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     df2 = df.loc[:, ['AMO', 'PDO', 'ENSO']].drop(df.tail(mode_lag).index)
     new_df = pd.concat((df1, df2), axis=1, ignore_index=True, join='inner')
     new_df.columns = ['year', 'month', 'season', 'F', 'AMO', 'PDO', 'ENSO']
-    del df1, df2, df
-    df = new_df
+    del df1, df2
+    df_shifted = new_df
     del new_df
 
     # Subset to valid years
-    subset = np.isin(df['year'].values, valid_years)
-    df = df.loc[subset, :]
+    subset = np.isin(df_shifted['year'].values, valid_years)
+    df_shifted = df_shifted.loc[subset, :]
 
     # Load dataset
     ds = Dataset(this_filename, 'r')
@@ -178,13 +178,13 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     X_month = X_month[subset]
 
     # Also need to check if our data spans the full valid period
-    subset = np.isin(df['year'].values, X_year)
-    df = df.loc[subset, :]
+    subset = np.isin(df_shifted['year'].values, X_year)
+    df_shifted = df_shifted.loc[subset, :]
 
     # Check that all dimensions look consistent
-    assert len(df) == np.shape(X)[0]
+    assert len(df_shifted) == np.shape(X)[0]
 
-    return X, X_units, lat, lon, X_year, X_month, df
+    return X, X_units, lat, lon, X_year, X_month, df_shifted, df
 
 
 def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
@@ -235,5 +235,5 @@ if __name__ == '__main__':
 
     # Get data and modes
     for v, f in zip(varname, filename):
-        X, X_units, lat, lon, X_year, X_month, df = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
-        fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, v, args.month, AMO_smooth_length, workdir)
+        X, X_units, lat, lon, X_year, X_month, df_shifted, _ = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
+        fit_linear_model(X, X_units, lat, lon, X_year, X_month, df_shifted, v, args.month, AMO_smooth_length, workdir)
