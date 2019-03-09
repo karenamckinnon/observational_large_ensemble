@@ -423,3 +423,36 @@ def save_2d_netcdf(lat, lon, vals, varname, units, savename, description, overwr
         fout.close()
 
     return
+
+
+def shift_df(df, shift, shift_names):
+    """Perform an offset between two sets of columns in a dataframe.
+
+    Parameters
+    ---------
+    df : pandas dataframe
+        The dataframe to shift
+    shift : positive integer
+        The number of offsets between the two column sets.
+    shift_names : list
+        Column names to shift forward. If you want to shift columns backwards, pass the complement to that set here.
+
+    Returns
+    -------
+    df_shifted : pandas dataframe
+        The shifted dataframe
+
+    """
+
+    other_names = [name for name in df.columns if name not in shift_names]
+
+    df1 = df.loc[:, shift_names].drop(df.head(shift).index)
+    df2 = df.loc[:, other_names].drop(df.tail(shift).index)
+    df2.index += shift  # need to match index, otherwise concat will ignore offset
+    new_df = pd.concat((df1, df2), axis=1, ignore_index=True, join='inner')
+    new_df.columns = shift_names + other_names
+    del df1, df2
+    df_shifted = new_df
+    del new_df
+
+    return df_shifted
