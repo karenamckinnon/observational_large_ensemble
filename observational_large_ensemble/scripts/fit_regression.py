@@ -2,7 +2,6 @@ import numpy as np
 from datetime import datetime
 import os
 from netCDF4 import Dataset
-import pandas as pd
 from observational_large_ensemble import utils as olens_utils
 import json
 import calendar
@@ -110,14 +109,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     # Add EM, GM time series to it
     df = df.assign(F=gm_em)
 
-    # Shift by desired lag for prediction (i.e. want Dec modes to predict Jan response)
-    df1 = df.loc[:, ['year', 'month', 'season', 'F']].drop(df.head(mode_lag).index)
-    df2 = df.loc[:, ['AMO', 'PDO', 'ENSO']].drop(df.tail(mode_lag).index)
-    new_df = pd.concat((df1, df2), axis=1, ignore_index=True, join='inner')
-    new_df.columns = ['year', 'month', 'season', 'F', 'AMO', 'PDO', 'ENSO']
-    del df1, df2
-    df_shifted = new_df
-    del new_df
+    # Shift modes in time
+    df_shifted = olens_utils.shift_df(df, mode_lag, ['year', 'month', 'season', 'F'])
 
     # Subset to valid years
     subset = np.isin(df_shifted['year'].values, valid_years)
