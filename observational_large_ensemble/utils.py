@@ -313,6 +313,8 @@ def iaaft(x):
     -------
     x_new : numpy array
         Surrogate time series
+    this_iter : int
+        Number of iterations until convergence
     """
 
     xbar = np.mean(x)
@@ -325,7 +327,9 @@ def iaaft(x):
 
     delta_criterion = 1
     criterion_new = 100
-    while delta_criterion > 1e-8:
+    max_iters = 100
+    this_iter = 0
+    while (delta_criterion > 1e-8) & (this_iter < max_iters):
         criterion_old = criterion_new
         # iteration 1: spectral adjustment
         x_old = x_new
@@ -340,11 +344,95 @@ def iaaft(x):
 
         criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
         delta_criterion = np.abs(criterion_new - criterion_old)
+        this_iter += 1
 
     x_new += xbar
     x_new = np.real(x_new)
 
-    return x_new
+    return x_new, this_iter
+
+
+def iaaft_seasonal(x):
+    """Return a surrogate time series based on IAAFT, retaining seasonality of amplitudes.
+
+    Parameters
+    ----------
+    x : numpy array
+        Original time series
+
+    Returns
+    -------
+    x_new : numpy array
+        Surrogate time series
+    this_iter : int
+        Number of iterations until convergence
+    """
+
+    xbar = np.mean(x)
+    x -= xbar  # remove mean
+
+    # Sort and rank original values, but only within a month
+    rank = np.zeros((len(x), ), dtype=int)
+    x_sort = np.empty_like(x)
+    for mo in range(12):
+        this_x = x[mo::12]
+        this_rank = np.argsort(this_x)
+        x_sort[mo::12] = this_x[this_rank]
+        rank[mo::12] = this_rank
+
+    # Store original fft coefficients
+    I_k = np.abs(np.fft.fft(x))
+
+    # Shuffle without replacement
+    # (All amplitudes preserved, but autocorrelation not preserved)
+    x_new = np.empty_like(x)
+    for mo in range(12):
+        this_x = x[mo::12]
+        x_new[mo::12] = np.random.choice(this_x, len(this_x), replace=False)
+
+    delta_criterion = 1
+    criterion_new = 100
+
+    this_iter = 0
+
+    # Because of the constraint on seasonality, the method does not converge as quickly or well.
+    while delta_criterion > 1e-6:
+        criterion_old = criterion_new
+
+        # iteration 1: spectral adjustment
+        # don't do anything with seasonality here
+        x_old = x_new
+        x_fourier = np.fft.fft(x_old)
+        adjusted_coeff = I_k*x_fourier/np.abs(x_fourier)
+        x_new = np.fft.ifft(adjusted_coeff)  # back to time space
+
+        # iteration 2: amplitude adjustment
+        x_old = x_new
+
+        index = np.argsort(np.real(x_new))
+        x_new[index] = x_sort
+
+        for mo in range(12):
+            this_x = np.real(x_old[mo::12])
+
+            # Swap rank back to original
+            this_index = np.argsort(this_x)
+
+            tmp_x = np.empty_like(this_x)
+            tmp_x[this_index] = x_sort[mo::12]
+
+            x_new[mo::12] = tmp_x
+
+        criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
+        delta_criterion = np.abs(criterion_new - criterion_old)
+
+        if this_iter > 100000:
+            return 0
+        this_iter += 1
+
+    x_new += xbar
+    x_new = np.real(x_new)
+    return x_new, this_iter
 
 
 def create_matched_surrogates_1d(x, y):
@@ -382,7 +470,11 @@ def create_matched_surrogates_1d(x, y):
     nhat = yhat - ahat*xhat
 
     # Get new estimate of x
-    x_surr = iaaft(x)
+    x_surr, this_iter = iaaft(x)
+    while this_iter > 99:
+        print('DEBUG: number of iterations is %i' % this_iter)
+        x_surr, this_iter = iaaft(x)
+
     # Fourier transform
     x_surr_hat = np.fft.fft(x_surr)
     # Get part of y that is coherent
@@ -392,7 +484,10 @@ def create_matched_surrogates_1d(x, y):
     y_surr = np.real(np.fft.ifft(y_coherent_hat).flatten())
 
     # Add random version of n
-    n_surr = iaaft(np.fft.ifft(nhat).flatten())
+    n_surr, this_iter = iaaft(np.fft.ifft(nhat).flatten())
+    while this_iter > 99:
+        print('DEBUG: number of iterations is %i' % this_iter)
+        x_surr, this_iter = iaaft(x)
 
     new_x = x_surr
     new_y = y_surr + n_surr
