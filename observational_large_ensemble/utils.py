@@ -396,7 +396,7 @@ def iaaft_seasonal(x):
     this_iter = 0
 
     # Because of the constraint on seasonality, the method does not converge as quickly or well.
-    while delta_criterion > 1e-6:
+    while delta_criterion > 3e-7:
         criterion_old = criterion_new
 
         # iteration 1: spectral adjustment
@@ -426,8 +426,9 @@ def iaaft_seasonal(x):
         criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
         delta_criterion = np.abs(criterion_new - criterion_old)
 
-        if this_iter > 100000:
+        if this_iter > 1000000:
             return 0
+
         this_iter += 1
 
     x_new += xbar
