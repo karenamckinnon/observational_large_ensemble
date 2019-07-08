@@ -7,6 +7,10 @@ import numpy as np
 from glob import glob
 import pandas as pd
 import os
+import xarray as xr
+import matplotlib.pyplot as plt
+import cartopy.feature as cfeature
+import cartopy.crs as ccrs
 
 
 def lowpass_butter(fs, lowcut, order,  data, axis=-1):
@@ -165,9 +169,12 @@ def create_mode_df(fname):
 
     enso_ts = ds['nino34'][:]
 
-    df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'PDO', 'ENSO'])
+    # Create version of PDO that is orthogonal to ENSO using Gram-Schmidt method
+    pdo_orth = pdo_ts - np.dot(pdo_ts, enso_ts)/np.dot(enso_ts, enso_ts)*enso_ts
+
+    df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'PDO', 'ENSO', 'PDO_orth'])
     df = df.assign(year=year, month=month, season=season_names,
-                   AMO=amo_ts, PDO=pdo_ts, ENSO=enso_ts)
+                   AMO=amo_ts, PDO=pdo_ts, ENSO=enso_ts, PDO_orth=pdo_orth)
 
     return df
 
@@ -439,6 +446,8 @@ def iaaft_seasonal(x):
 def create_matched_surrogates_1d(x, y):
     """Create surrogate time series with enforced empirical coherence.
 
+    UPDATE: do not use!
+
     In the spectral domain, the model is
     yhat = ahat*xhat + nhat
 
@@ -584,3 +593,70 @@ def shift_df(df, shift, shift_names):
     del new_df
 
     return df_shifted
+
+
+def plot_sst_patterns(lat, lon, beta, ice_loc, modename, savename=None):
+    """Make global maps of SST anomalies regressed on mode time series.
+
+    Parameters
+    ----------
+    lat : xarray.DataArray or numpy.ndarray
+        Latitude values
+    lon : xarray.DataArray or numpy.ndarray
+        Longitude values
+    beta : numpy.ndarray or numpy.matrix
+        Regression coefficients to plot (nlat x nlon or nlat*nlon)
+    ice_loc : xarray.DataArray or numpy.ndarray
+        Indicator map of where ice is present (nlat x nlon)
+    modename : str
+        Name of SST mode
+    savename : str or None
+        Full path and filename if the plot should be saved
+
+    Returns
+    -------
+    Nothing if savename is not None. Will show plot if savename is None.
+
+    """
+
+    nlat = len(lat)
+    nlon = len(lon)
+
+    beta = beta.reshape((nlat, nlon))
+    beta[ice_loc] = np.nan
+
+    # Create xarray dataset
+    ds_beta = xr.Dataset(data_vars={'beta': (('latitude', 'longitude'), beta.reshape((nlat, nlon)))},
+                         coords={'latitude': lat,
+                                 'longitude': lon})
+
+    fig = plt.figure(figsize=(20, 8))
+    fig.tight_layout()
+
+    if modename == 'AMO':
+        proj = ccrs.PlateCarree(central_longitude=0)
+    else:
+        # shift longitude for plotting so there isn't a white line in the middle
+        ds_beta = ds_beta.assign_coords(longitude=(ds_beta.longitude + 360) % 360)
+        ds_beta = ds_beta.sortby('longitude')
+        proj = ccrs.PlateCarree(central_longitude=180)
+
+    ax = plt.subplot(111, projection=proj)
+    to_plot = ds_beta['beta']
+
+    to_plot.plot.contourf(ax=ax, transform=ccrs.PlateCarree(),
+                          levels=np.arange(-0.6, 0.7, 0.1),
+                          extend='both')
+
+    cax = plt.gcf().axes[-1]
+    cax.tick_params(labelsize=16)
+    cax.set_ylabel(r'SST anomalies ($^\circ$C)', fontsize=16)
+
+    ax.add_feature(cfeature.LAND, color='lightgray', edgecolor='k')
+    ax.add_feature(cfeature.LAKES, color='lightgray', edgecolor=None)
+    ax.coastlines()
+    ax.set_global()
+
+    if savename is not None:
+        plt.savefig(savename, dpi=300, orientation='landscape', bbox_inches='tight')
+        plt.close()
