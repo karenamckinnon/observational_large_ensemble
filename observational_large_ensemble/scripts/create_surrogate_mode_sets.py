@@ -77,8 +77,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('n_ens_members', type=int, help='Number of surrogate time series to create.')
     parser.add_argument('seed', type=int, help='Random seed to use for reproducibility')
+    parser.add_argument('mode_nc', type=str, help='Filename for modes')
     args = parser.parse_args()
 
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
 
-    create_surrogate_modes(args.n_ens_members, workdir_base, args.seed)
+    create_surrogate_modes(args.n_ens_members, workdir_base, args.mode_nc, args.seed)
