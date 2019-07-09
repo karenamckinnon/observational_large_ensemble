@@ -20,9 +20,9 @@ def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, mo
     mo = int(month)
 
     predictand = X[X_month == mo, ...]
-    predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO']].values
+    predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO_orth']].values
     predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
-    predictors_names = 'constant', 'forcing', 'ENSO', 'PDO', 'AMO'
+    predictors_names = 'constant', 'forcing', 'ENSO', 'PDO_orth', 'AMO'
     y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))
     X_mat = np.matrix(predictors)
 
@@ -40,19 +40,16 @@ def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, mo
     AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[df['month'] == mo, 'AMO'].values,
                                                      M=AMO_smooth_length)
 
+    # Reset AMO to unit standard deviation
+    AMO_smoothed /= np.std(AMO_smoothed)
+
     BETA = np.empty((len(predictors_names), nlat*nlon))
     BETA[:-1, :] = np.array(beta)
 
     valid_indices = np.where(~np.isnan(BETA[0, :]))[0]
 
-    residual_smooth = np.zeros((nlat*nlon, len(AMO_smoothed)))
-
-    for ii in valid_indices:
-        residual_smooth[ii, :], _ = olens_utils.smooth(residual[:, ii],
-                                                       M=AMO_smooth_length)
-
     X_mat_AMO = np.matrix(AMO_smoothed).T
-    y_mat_AMO = np.matrix(residual_smooth).T
+    y_mat_AMO = np.matrix(residual[:, valid_indices])
     BETA[-1, :] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
 
     # Save beta values to netcdf
@@ -106,6 +103,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
 
     # Get dataframe of modes
     df = olens_utils.create_mode_df(modes_fname)
+
     # Add EM, GM time series to it
     df = df.assign(F=gm_em)
 
@@ -213,7 +211,7 @@ if __name__ == '__main__':
     filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
                 '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v7.nc',
                 '/glade/work/mckinnon/20CRv2c/prmsl.mon.mean.nc']
-    AMO_smooth_length = 15  # number of years to apply AMO smoothing
+    AMO_smooth_length = 21  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
     valid_years = np.arange(1921, 2017)
