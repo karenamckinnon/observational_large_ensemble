@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 
-def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
+def create_surrogate_modes(n_ens_members, workdir_base, mode_nc='HadISST.cvdp_data.1920-2017.nc', this_seed=123):
     """Create surrogate versions of ENSO, PDO, and AMO.
 
     Parameters
@@ -12,6 +12,8 @@ def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
         Number of surrogate time series to create
     workdir_base : str
         Working directory
+    mode_nc : str
+        Filename (from CVDP) with mode time series
     this_seed : int
         Random seed for reproducibility.
 
@@ -22,7 +24,7 @@ def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
     """
 
     cvdp_loc = '/glade/work/mckinnon/CVDP'
-    modes_fname = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc  # modes
+    modes_fname = '%s/%s' % (cvdp_loc, mode_nc)  # modes
 
     # Load original versions
     df = olens_utils.create_mode_df(modes_fname)
@@ -57,7 +59,8 @@ def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
     savedir = '%s/surrogates' % workdir_base
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
-    saveloc = '%s/surrogate_mode_time_series_%03d_%i.npz' % (savedir, n_ens_members, this_seed)
+    savename = '%s_surrogate_mode_time_series_%03d_%i.npz' % (mode_nc.split('.')[0], n_ens_members, this_seed)
+    saveloc = '%s/%s' % (savedir, savename)
 
     # Note that the years don't mean anything for the surrogates, but the months do
     np.savez(saveloc,
