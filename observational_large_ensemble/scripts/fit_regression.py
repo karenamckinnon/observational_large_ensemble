@@ -46,10 +46,8 @@ def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, mo
     BETA = np.empty((len(predictors_names), nlat*nlon))
     BETA[:-1, :] = np.array(beta)
 
-    valid_indices = np.where(~np.isnan(BETA[0, :]))[0]
-
     X_mat_AMO = np.matrix(AMO_smoothed).T
-    y_mat_AMO = np.matrix(residual[:, valid_indices])
+    y_mat_AMO = np.matrix(residual[valid_indices, :])
     BETA[-1, :] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
 
     # Save beta values to netcdf
