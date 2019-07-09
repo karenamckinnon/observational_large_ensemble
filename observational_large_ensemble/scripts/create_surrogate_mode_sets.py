@@ -4,7 +4,7 @@ import os
 
 
 def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
-    """Create surrogate versions of ENSO (future, add PDO + AMO).
+    """Create surrogate versions of ENSO, PDO, and AMO.
 
     Parameters
     ----------
@@ -37,17 +37,35 @@ def create_surrogate_modes(n_ens_members, workdir_base, this_seed=123):
             tmp = olens_utils.iaaft_seasonal(df['ENSO'].values)
         enso_surr[:, kk] = tmp[0]
 
+    # Create PDO and AMO using standard approach
+    pdo_surr = np.empty((ntime, n_ens_members))
+    amo_surr = np.empty_like(pdo_surr)
+    for kk in range(n_ens_members):
+        # PDO
+        tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        pdo_surr[:, kk] = tmp[0]
+
+        # AMO
+        tmp = olens_utils.iaaft(df['AMO'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['AMO'].values)
+        amo_surr[:, kk] = tmp[0]
+
     # Save
-    savedir = '%s/surrogates/' % workdir_base
+    savedir = '%s/surrogates' % workdir_base
     if not os.path.isdir(savedir):
         os.mkdir(savedir)
-    saveloc = '%senso_time_series_%03d_%i.npz' % (savedir, n_ens_members, this_seed)
+    saveloc = '%s/surrogate_mode_time_series_%03d_%i.npz' % (savedir, n_ens_members, this_seed)
 
     # Note that the years don't mean anything for the surrogates, but the months do
     np.savez(saveloc,
              years=df['year'].values,
              months=df['month'].values,
-             enso_surr=enso_surr)
+             enso_surr=enso_surr,
+             pdo_surr=pdo_surr,
+             amo_surr=amo_surr)
 
 
 if __name__ == '__main__':
