@@ -172,6 +172,11 @@ def create_mode_df(fname):
     # Create version of PDO that is orthogonal to ENSO using Gram-Schmidt method
     pdo_orth = pdo_ts - np.dot(pdo_ts, enso_ts)/np.dot(enso_ts, enso_ts)*enso_ts
 
+    # Set ENSO and PDO_orth to unit sigma
+    enso_ts /= np.std(enso_ts)
+    pdo_orth /= np.std(pdo_orth)
+    pdo_ts /= np.std(pdo_ts)
+
     df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'PDO', 'ENSO', 'PDO_orth'])
     df = df.assign(year=year, month=month, season=season_names,
                    AMO=amo_ts, PDO=pdo_ts, ENSO=enso_ts, PDO_orth=pdo_orth)
