@@ -6,16 +6,37 @@ from observational_large_ensemble import utils as olens_utils
 import json
 import calendar
 from cftime import utime
+import pandas as pd
+import xarray as xr
 
 
-def fit_linear_model(X, X_units, lat, lon, X_year, X_month, df, this_varname, month, AMO_smooth_length, workdir):
+def fit_linear_model(dsX, df, this_varname, month, AMO_smooth_length, workdir):
     """Save linear regression model parameters.
+
+    Parameters
+    ----------
+    dsX : xarray.Dataset
+        Dataset containing climate variable of interest
+    df : pandas.dataframe
+        Mode and forced time series
+    this_varname : str
+        Variable name for which to fit regression
+    month : int
+        Month for which to fit regression model
+    AMO_smooth_length : int
+        Number of years over which to smooth AMO
+    workdir : str
+        Where to save output
+
+    Returns
+    -------
+    Nothing. Saves regression coefficients to netcdf.
     """
 
     ntime, nlat, nlon = np.shape(X)
 
     # Fit OLS model to variable X (deterministic)
-    # Predictors: constant, GM-EM (forced component), ENSO, PDO
+    # Predictors: constant, GM-EM (forced component), ENSO, PDO, AMO
     # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
     mo = int(month)
 
@@ -173,7 +194,16 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     # Check that all dimensions look consistent
     assert len(df_shifted) == np.shape(X)[0]
 
-    return X, X_units, lat, lon, X_year, X_month, df_shifted, df
+    # Put into dataset
+    time = pd.date_range(start='%04d-%02d' % (X_year[0], X_month[0]),
+                         freq='M', periods=len(X_year))
+    dsX = xr.Dataset(data_vars={v: (('time', 'lat', 'lon'), X)},
+                     coords={'time': time,
+                             'lat': lat,
+                             'lon': lon},
+                     attrs={'%s units' % v: X_units})
+
+    return dsX, df_shifted, df
 
 
 def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
@@ -224,5 +254,5 @@ if __name__ == '__main__':
 
     # Get data and modes
     for v, f in zip(varname, filename):
-        X, X_units, lat, lon, X_year, X_month, df_shifted, _ = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
-        fit_linear_model(X, X_units, lat, lon, X_year, X_month, df_shifted, v, args.month, AMO_smooth_length, workdir)
+        dsX, df_shifted, _ = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
+        fit_linear_model(dsX, df_shifted, v, args.month, AMO_smooth_length, workdir)
