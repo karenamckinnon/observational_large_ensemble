@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 figdir = '/glade/work/mckinnon/obsLE/figs/'
 
-# (1) SST anomaly maps associated with modes in the observations ####
+# (1) SST anomaly maps associated with modes in the observations
 
 # Load mode data
 cvdp_loc = '/glade/work/mckinnon/CVDP'
@@ -79,7 +79,8 @@ for this_mode in mode_names:
             olens_utils.plot_sst_patterns(this_ds.latitude, this_ds.longitude, beta, ice_loc, this_mode, savename)
 
 
-# (2) Power spectra of the observed modes compared to the surrogates ####
+# (2) Power spectra of the observed modes compared to the surrogates
+# TODO: add red noise spectrum for context
 
 # Reload modes for full time period
 df = olens_utils.create_mode_df(modes_fname)
