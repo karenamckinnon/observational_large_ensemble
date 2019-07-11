@@ -270,7 +270,7 @@ def pmtm(x, dt, nw=3, cl=0.95):
     return P, s, ci
 
 
-def plot_spectra(P, s, ci, savename=None):
+def plot_spectra(P, s, ci, plot_ci=True, savename=None, **kwargs):
     """Make, display, and optionally save power spectrum plot.
 
     Parameters
@@ -281,8 +281,12 @@ def plot_spectra(P, s, ci, savename=None):
         Associated frequencies
     ci : numpy array
         Associated confidence interval
-    savename : str
+    plot_ci : bool
+        Indicator of whether to plot confidence interval
+    savename : str or None
         Full filepath to save figure
+    **kwargs : Key word args
+        Optional fig, ax if spectrum should be added to existing figure
 
     Returns
     -------
@@ -293,18 +297,20 @@ def plot_spectra(P, s, ci, savename=None):
     """
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
-
-    ax.fill_between(s, P*ci[:, 0], P*ci[:, -1], color='lightgray', alpha=0.5, lw=0)
+    if 'fig' in kwargs:
+        fig = kwargs['fig']
+        ax = kwargs['ax']
+    else:  # creat new figure
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
+    if plot_ci:
+        ax.fill_between(s, P*ci[:, 0], P*ci[:, -1], color='lightgray', alpha=0.5, lw=0)
     ax.plot(s, P)
     ax.set_xscale('log')
     ax.set_yscale('log')
     ax.set_xlim(np.min(s), np.max(s))
-    ax.set_xticks([50**-1, 20**-1, 10**-1, 5**-1, 2**-1])
-    ax.set_xticklabels(['50', '20', '10', '5', '2'])
     plt.xticks(fontsize=20)
     plt.yticks(fontsize=20)
-    plt.xlabel('Period (yrs)', fontsize=20)
+    plt.xlabel('Frequency', fontsize=20)
     plt.ylabel('Power density', fontsize=20)
 
     if savename is not None:
