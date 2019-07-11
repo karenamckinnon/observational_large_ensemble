@@ -301,15 +301,14 @@ def plot_spectra(P, s, ci, plot_ci=True, savename=None, **kwargs):
         fig = kwargs['fig']
         ax = kwargs['ax']
     else:  # creat new figure
-        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 8))
+        fig, ax = plt.subplots(nrows=1, ncols=1, figsize=(12, 6))
     if plot_ci:
         ax.fill_between(s, P*ci[:, 0], P*ci[:, -1], color='lightgray', alpha=0.5, lw=0)
     ax.plot(s, P)
     ax.set_xscale('log')
     ax.set_yscale('log')
-    ax.set_xlim(np.min(s), np.max(s))
-    plt.xticks(fontsize=20)
-    plt.yticks(fontsize=20)
+    plt.xticks(fontsize=16)
+    plt.yticks(fontsize=16)
     plt.xlabel('Frequency', fontsize=20)
     plt.ylabel('Power density', fontsize=20)
 
