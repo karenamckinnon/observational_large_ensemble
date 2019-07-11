@@ -197,11 +197,11 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     # Put into dataset
     time = pd.date_range(start='%04d-%02d' % (X_year[0], X_month[0]),
                          freq='M', periods=len(X_year))
-    dsX = xr.Dataset(data_vars={v: (('time', 'lat', 'lon'), X)},
+    dsX = xr.Dataset(data_vars={this_varname: (('time', 'lat', 'lon'), X)},
                      coords={'time': time,
                              'lat': lat,
                              'lon': lon},
-                     attrs={'%s units' % v: X_units})
+                     attrs={'%s units' % this_varname: X_units})
 
     return dsX, df_shifted, df
 
