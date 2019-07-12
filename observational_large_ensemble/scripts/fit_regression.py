@@ -10,7 +10,7 @@ import pandas as pd
 import xarray as xr
 
 
-def fit_linear_model(dsX, df, this_varname, month, AMO_smooth_length, workdir):
+def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
     """Save linear regression model parameters.
 
     Parameters
@@ -21,8 +21,6 @@ def fit_linear_model(dsX, df, this_varname, month, AMO_smooth_length, workdir):
         Mode and forced time series
     this_varname : str
         Variable name for which to fit regression
-    month : int
-        Month for which to fit regression model
     AMO_smooth_length : int
         Number of years over which to smooth AMO
     workdir : str
@@ -33,62 +31,70 @@ def fit_linear_model(dsX, df, this_varname, month, AMO_smooth_length, workdir):
     Nothing. Saves regression coefficients to netcdf.
     """
 
-    ntime, nlat, nlon = np.shape(X)
-
     # Fit OLS model to variable X (deterministic)
     # Predictors: constant, GM-EM (forced component), ENSO, PDO, AMO
+    # Since AMO is smoothed, can only use a subset of the data
     # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
-    mo = int(month)
 
-    predictand = X[X_month == mo, ...]
-    predictors = df.loc[df['month'] == mo, ['F', 'ENSO', 'PDO_orth']].values
-    predictors = np.hstack((np.ones((len(predictand), 1)), predictors))
-    predictors_names = 'constant', 'forcing', 'ENSO', 'PDO_orth', 'AMO'
-    y_mat = np.matrix(predictand.reshape((int(ntime/12), nlat*nlon)))
-    X_mat = np.matrix(predictors)
-
-    if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor
-        predictors_names = predictors_names[:1] + predictors_names[2:]
-        X_mat = X_mat[:, 1:]
-
-    beta = (np.dot(np.dot((np.dot(X_mat.T, X_mat)).I, X_mat.T), y_mat))  # Max likelihood estimate
-    yhat = np.dot(X_mat, beta)
-    residual = y_mat - yhat
-    residual = np.array(residual)
-
-    # Fit AMO to the residual
-    # Have to treat separately because performing smoothing
-    AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[df['month'] == mo, 'AMO'].values,
-                                                     M=AMO_smooth_length)
+    # Smooth AMO
+    AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[:, 'AMO'].values,
+                                                     M=AMO_smooth_length*12)
 
     # Reset AMO to unit standard deviation
     AMO_smoothed /= np.std(AMO_smoothed)
 
-    BETA = np.empty((len(predictors_names), nlat*nlon))
-    BETA[:-1, :] = np.array(beta)
+    df = df.loc[valid_indices, :]
+    df = df.assign(AMO=AMO_smoothed)
 
-    X_mat_AMO = np.matrix(AMO_smoothed).T
-    y_mat_AMO = np.matrix(residual[valid_indices, :])
-    BETA[-1, :] = (np.dot(np.dot((np.dot(X_mat_AMO.T, X_mat_AMO)).I, X_mat_AMO.T), y_mat_AMO))
+    # Add constant
+    df = df.assign(constant=np.ones(len(df)))
 
-    # Save beta values to netcdf
+    # Subset data to match AMO
+    da = dsX[this_varname][valid_indices, ...]
+
+    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO']
+    if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor, will happen for SLP
+        predictors_names.remove('F')
+
+    # Create dataset to save beta values
+    ds_beta = xr.Dataset(coords={'month': np.arange(1, 13),
+                                 'lat': da.lat,
+                                 'lon': da.lon},
+                         attrs={'description': 'Regression coefficients for %s' % varname})
+
+    residual = np.empty(da.shape)
+    _, nlat, nlon = np.shape(da)
+    BETA = np.empty((12, nlat, nlon, len(predictors_names)))
+
+    for month in range(1, 13):
+
+        time_idx = da['time.month'] == month
+
+        predictand = da.sel(time=da['time.month'] == month).values
+        predictors = df.loc[df['month'] == month, predictors_names].values
+        ntime, nlat, nlon = np.shape(predictand)
+
+        y_mat = np.matrix(predictand.reshape(ntime, nlat*nlon))
+        X_mat = np.matrix(predictors)
+
+        beta = (np.dot(np.dot((np.dot(X_mat.T, X_mat)).I, X_mat.T), y_mat))  # Max likelihood estimate
+        yhat = np.dot(X_mat, beta)
+        residual[time_idx, ...] = np.array(y_mat - yhat).reshape((ntime, nlat, nlon))
+
+        BETA[month-1, ...] = np.array(beta).T.reshape((nlat, nlon, len(predictors_names)))
+
+    da_residual = da.copy(data=residual)
+    for counter, name in enumerate(predictors_names):
+        kwargs = {'beta_%s' % name: (('month', 'lat', 'lon'), BETA[..., counter])}
+        ds_beta = ds_beta.assign(**kwargs)
+
+    # Save to netcdf
     var_dir = '%s%s/' % (workdir, this_varname)
     if not os.path.isdir(var_dir):
         os.mkdir(var_dir)
-    for counter, p_name in enumerate(predictors_names):
-        this_beta = BETA[counter, :].reshape((nlat, nlon))
-        description = '%s regression model, %s term. Month %i' % (this_varname, p_name, mo)
-        if p_name == 'constant':
-            units = X_units
-        elif p_name == 'forcing':
-            units = 'unitless'
-        else:
-            units = '%s/deg C' % X_units
 
-        nc_varname = '%s_coeff' % p_name
-        savename = '%sbeta%01d_month%02d.nc' % (var_dir, counter, mo)
-        olens_utils.save_2d_netcdf(lat, lon, this_beta, nc_varname, units,
-                                   savename, description, overwrite=False)
+    ds_beta.to_netcdf('%sbeta.nc' % var_dir)
+    da_residual.to_netcdf('%sresidual.nc' % var_dir)
 
 
 def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
@@ -228,12 +234,6 @@ def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
 
 if __name__ == '__main__':
 
-    import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument('month', type=int, help='Which month to fit regression model')
-
-    args = parser.parse_args()
-
     # Set of variables to analyze (user inputs)
     varname = ['tas', 'pr', 'slp']
     filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
@@ -255,4 +255,4 @@ if __name__ == '__main__':
     # Get data and modes
     for v, f in zip(varname, filename):
         dsX, df_shifted, _ = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
-        fit_linear_model(dsX, df_shifted, v, args.month, AMO_smooth_length, workdir)
+        fit_linear_model(dsX, df_shifted, v, AMO_smooth_length, workdir)
