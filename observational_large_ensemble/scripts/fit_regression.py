@@ -237,12 +237,12 @@ if __name__ == '__main__':
     # Set of variables to analyze (user inputs)
     varname = ['tas', 'pr', 'slp']
     filename = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
-                '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v7.nc',
+                '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v2018.nc',
                 '/glade/work/mckinnon/20CRv2c/prmsl.mon.mean.nc']
     AMO_smooth_length = 21  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
-    valid_years = np.arange(1921, 2017)
+    valid_years = np.arange(1921, 2015)
     cvdp_loc = '/glade/work/mckinnon/CVDP'
 
     # Need odd-window for AMO
