@@ -60,7 +60,7 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
     ds_beta = xr.Dataset(coords={'month': np.arange(1, 13),
                                  'lat': da.lat,
                                  'lon': da.lon},
-                         attrs={'description': 'Regression coefficients for %s' % varname})
+                         attrs={'description': 'Regression coefficients for %s' % this_varname})
 
     residual = np.empty(da.shape)
     _, nlat, nlon = np.shape(da)
