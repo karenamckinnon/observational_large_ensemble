@@ -1,8 +1,8 @@
 import numpy as np
 from datetime import datetime
 import os
-from observational_large_ensemble import utils as olens_utils
-from observational_large_ensemble.scripts import model_components as mc
+import utils as olens_utils
+from scripts import model_components as mc
 import json
 
 
