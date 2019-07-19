@@ -8,6 +8,3 @@ source ./scripts/download_data.sh
 # Create modes
 # Note that this starts a batch job, so will not be done immediately! Comment out if already finished
 sbatch ./scripts/run_modes_parallel.sbatch
-
-# Fit regression model, and save residuals for bootstrapping
-python ./scripts/fit_regression.py

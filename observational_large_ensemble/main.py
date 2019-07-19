@@ -4,6 +4,7 @@ import os
 import utils as olens_utils
 from scripts import model_components as mc
 import json
+from subprocess import check_call
 
 
 def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
@@ -18,7 +19,8 @@ def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
     now = datetime.strftime(datetime.now(), '%Y%m%d')
     workdir = '%s/%s' % (workdir_base, now)
     if not os.path.isdir(workdir):
-        os.mkdir(workdir)
+        cmd = 'mkdir -p %s' % workdir
+        check_call(cmd.split())
     # Save parameter set to director
     with open(workdir + '/parameter_set.json', 'w') as f:
         json.dump(param_dict, f)

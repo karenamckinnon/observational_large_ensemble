@@ -891,7 +891,7 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
 
                 block_est[i, j] = L
 
-        new_block = np.percentile(block_est.flatten(), percentile=percentile_threshold)
+        new_block = np.percentile(block_est.flatten(), percentile_threshold)
         if new_block > block_use:
             block_use = new_block
 
