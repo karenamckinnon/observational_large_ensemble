@@ -90,12 +90,12 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
         ds_beta = ds_beta.assign(**kwargs)
 
     # Save to netcdf
-    var_dir = '%s%s/' % (workdir, this_varname)
+    var_dir = '%s/%s' % (workdir, this_varname)
     if not os.path.isdir(var_dir):
         os.mkdir(var_dir)
 
-    ds_beta.to_netcdf('%sbeta.nc' % var_dir)
-    da_residual.to_netcdf('%sresidual.nc' % var_dir)
+    ds_beta.to_netcdf('%s/beta.nc' % var_dir)
+    da_residual.to_netcdf('%s/residual.nc' % var_dir)
 
 
 def get_all_surrogates(surr_dir):
