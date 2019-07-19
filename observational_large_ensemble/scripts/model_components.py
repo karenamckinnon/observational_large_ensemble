@@ -98,13 +98,15 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
 
 
-def get_all_surrogates(surr_dir):
+def get_all_surrogates(surr_dir, prefix):
     """Combine all surrogate mode time series into a single array for each.
 
     Parameters
     ----------
     surr_dir : str
         Directory with all surrogate files (produced via run_modes_parallel.sbatch)
+    prefix : str
+        Common component of all surrogate filenames
 
     Returns
     -------
@@ -118,7 +120,12 @@ def get_all_surrogates(surr_dir):
         The month, [1, 12], for the mode time series.
     """
 
-    fnames = sorted(glob('%s/HadISST_surrogate_mode_time_series_*.npz' % surr_dir))
+    # Use a single set of LE surrogates
+    if 'LE-001' not in surr_dir:
+        this_member = (surr_dir.split('/')[-2]).split('-')[-1]
+        surr_dir = surr_dir.replace(this_member, '001')
+
+    fnames = sorted(glob('%s/%s*.npz' % (surr_dir, prefix)))
     nsurr_per_file = int(fnames[0].split('_')[-2])
     total_surr = len(fnames)*nsurr_per_file
 
