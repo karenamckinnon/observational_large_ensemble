@@ -678,7 +678,7 @@ def plot_sst_patterns(lat, lon, beta, ice_loc, modename, savename=None):
         plt.close()
 
 
-def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
+def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_conversion):
     """Return observational data and associated time series of modes for a given variable.
 
     Parameters
@@ -691,8 +691,10 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
         Set of years to pull from file
     mode_lag : int
         Number of months to lag the climate variable response from the mode time series
-    cvdp_loc : str
-        Directory containing CVDP output
+    cvdp_file : str
+        Full path to CVDP data
+    name_conversion : dict
+        Mapping from standard names to names in specific data sources
 
     Returns
     -------
@@ -705,13 +707,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
 
     """
 
-    # Location of CVDP output
-    modes_fname = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc  # modes
-
-    # Convert non standard names to standard
-    name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
-
     # Get the forced component
+    cvdp_loc = '/'.join(cvdp_file.split('/')[:-1])
     # Assume that the global mean trend in sea level is zero
     if this_varname == 'slp':
         gm_em, gm_em_units, time, time_units = forced_trend('tas', cvdp_loc)
@@ -731,7 +728,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
         gm_em_units = 'mm'
 
     # Get dataframe of modes
-    df = create_mode_df(modes_fname)
+    df = create_mode_df(cvdp_file)
 
     # Add EM, GM time series to it
     df = df.assign(F=gm_em)
