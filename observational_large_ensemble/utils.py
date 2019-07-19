@@ -821,3 +821,80 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
                      attrs={'units': X_units})
 
     return dsX, df_shifted, df
+
+
+def choose_block(parameter_dir, varnames, percentile_threshold=97):
+    """Calculate a block size for all variables, months, and locations using the Wilks (1997) JClim formula.
+
+    Parameters
+    ----------
+    parameter_dir : str
+        Parent directory for parameter files
+    varnames : list
+        List of (standard) variable names to be considered, i.e. ['tas', 'pr', 'slp']
+    percentile_threshold : float
+        The percentile of estimated blocks to use universally.
+
+    Returns
+    -------
+    block_use : int
+        Suggested block size in years
+    block_use_mo : int
+        Suggested block size in months
+
+    """
+
+    # Initialize with smallest block (in years)
+    block_use = 1
+
+    for this_varname in varnames:
+        this_dir = '%s/%s' % (parameter_dir, this_varname)
+        fname = '%s/residual.nc' % this_dir
+
+        ds = xr.open_dataset(fname)
+        _, nlat, nlon = np.shape(ds[this_varname])
+
+        has_data = ~np.isnan(ds[this_varname][-1, ...].values)
+
+        datavec = ds[this_varname].values[:, has_data]
+
+        # We want to know the extent to which there is year-to-year memory (not seasonal)
+        # Calculate block size for each month, gridbox
+
+        ntime, nbox = np.shape(datavec)
+
+        block_est = np.empty((12, nbox))
+
+        def rhs(L):
+            return (n - L + 1)**((2/3)*(1-n_eff/n))
+
+        for i in range(12):
+            for j in range(nbox):
+                this_ts = datavec[i::12, j]
+                # estimate rho
+                rho = np.corrcoef(this_ts[1:], this_ts[:-1])[0, 1]
+                n = len(this_ts)
+
+                # Wilks equation is implicit, so need to solve iteratively
+                n_eff = n*(1 - rho)/(1 + rho)
+                # As per Wilks 1997, start with a guess of L = sqrt(n)
+                L = int(np.sqrt(n))
+
+                while L > rhs(L):
+                    L -= 1
+
+                while L < rhs(L):
+                    L += 1
+
+                if L > rhs(L):
+                    L -= 1
+
+                block_est[i, j] = L
+
+        new_block = np.percentile(block_est.flatten(), percentile_threshold=percentile_threshold)
+        if new_block > block_use:
+            block_use = new_block
+
+    block_use_mo = block_use*12  # switch to months
+
+    return block_use, block_use_mo
