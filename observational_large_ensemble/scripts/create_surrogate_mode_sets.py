@@ -3,7 +3,7 @@ import numpy as np
 import os
 
 
-def create_surrogate_modes(n_ens_members, workdir_base, mode_nc='HadISST.cvdp_data.1920-2017.nc', this_seed=123):
+def create_surrogate_modes(n_ens_members, workdir_base, mode_nc, this_seed=123):
     """Create surrogate versions of ENSO, PDO, and AMO.
 
     Parameters
@@ -75,9 +75,9 @@ if __name__ == '__main__':
 
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('n_ens_members', type=int, help='Number of surrogate time series to create.')
-    parser.add_argument('seed', type=int, help='Random seed to use for reproducibility')
-    parser.add_argument('mode_nc', type=str, help='Filename for modes')
+    parser.add_argument('-N', '--n_ens_members', type=int, help='Number of surrogate time series to create.')
+    parser.add_argument('-S', '--seed', type=int, help='Random seed to use for reproducibility')
+    parser.add_argument('-f', '--mode_nc', type=str, help='Filename for modes')
     args = parser.parse_args()
 
     workdir_base = '/glade/work/mckinnon/obsLE/parameters'
