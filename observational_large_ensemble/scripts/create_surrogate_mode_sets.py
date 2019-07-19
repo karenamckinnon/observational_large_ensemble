@@ -80,6 +80,6 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--mode_nc', type=str, help='Filename for modes')
     args = parser.parse_args()
 
-    workdir_base = '/glade/work/mckinnon/obsLE/parameters'
+    workdir_base = '/glade/work/mckinnon/obsLE/parameters/obs'
 
     create_surrogate_modes(args.n_ens_members, workdir_base, args.mode_nc, args.seed)
