@@ -140,6 +140,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
     df_shifted = df_shifted.loc[subset, :]
 
     # Load dataset
+    # TODO, switch to xarray
     ds = Dataset(this_filename, 'r')
 
     # Load data
@@ -178,6 +179,12 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
         dt = cld.num2date(X_time)
         X_year = np.array([t.year for t in dt])
         X_month = np.array([t.month for t in dt])
+
+    if 'climatology' in ds.variables:
+        climo = ds['climatology'][:]
+        # Add climatology to X
+        for counter, this_month in enumerate(X_month):
+            X[counter, ...] += climo[this_month - 1, ...]
 
     # Permute all data to be time, lat, lon
     lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
