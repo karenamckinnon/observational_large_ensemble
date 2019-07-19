@@ -1,12 +1,8 @@
 import numpy as np
 from datetime import datetime
 import os
-from netCDF4 import Dataset
 from observational_large_ensemble import utils as olens_utils
 import json
-import calendar
-from cftime import utime
-import pandas as pd
 import xarray as xr
 
 
@@ -51,6 +47,9 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
 
     # Subset data to match AMO
     da = dsX[this_varname][valid_indices, ...]
+    attrs = dsX.attrs
+    attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
+    da.attrs = attrs
 
     predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO']
     if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor, will happen for SLP
@@ -84,6 +83,7 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
         BETA[month-1, ...] = np.array(beta).T.reshape((nlat, nlon, len(predictors_names)))
 
     da_residual = da.copy(data=residual)
+    da_residual.attrs
     for counter, name in enumerate(predictors_names):
         kwargs = {'beta_%s' % name: (('month', 'lat', 'lon'), BETA[..., counter])}
         ds_beta = ds_beta.assign(**kwargs)
@@ -95,128 +95,6 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
 
     ds_beta.to_netcdf('%sbeta.nc' % var_dir)
     da_residual.to_netcdf('%sresidual.nc' % var_dir)
-
-
-def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_loc):
-    """Return observational data and associated time series of modes for a given variable.
-    """
-
-    # Location of CVDP output
-    modes_fname = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc  # modes
-
-    # Convert non standard names to standard
-    name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
-
-    # Get the forced component
-    # Assume that the global mean trend in sea level is zero
-    if this_varname == 'slp':
-        gm_em, gm_em_units, time, time_units = olens_utils.forced_trend('tas', cvdp_loc)
-        gm_em *= 0
-        gm_em += 1  # will replace constant
-    else:
-        gm_em, gm_em_units, time, time_units = olens_utils.forced_trend(this_varname, cvdp_loc)
-
-    # If using precipitation, need number of days in month to convert units
-    if this_varname == 'pr':
-        gm_time = np.arange(1920 + 0.5/12, 1920 + 1/12*len(time), 1/12)
-        gm_year = np.floor(gm_time)
-        gm_month = np.ceil((gm_time - gm_year)*12)
-        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(gm_year, gm_month)]
-        assert gm_em_units == 'mm/day'  # double check
-        gm_em *= days_per_month
-        gm_em_units = 'mm'
-
-    # Get dataframe of modes
-    df = olens_utils.create_mode_df(modes_fname)
-
-    # Add EM, GM time series to it
-    df = df.assign(F=gm_em)
-
-    # Shift modes in time
-    df_shifted = olens_utils.shift_df(df, mode_lag, ['year', 'month', 'season', 'F'])
-
-    # Subset to valid years
-    subset = np.isin(df_shifted['year'].values, valid_years)
-    df_shifted = df_shifted.loc[subset, :]
-
-    # Load dataset
-    # TODO, switch to xarray
-    ds = Dataset(this_filename, 'r')
-
-    # Load data
-    try:
-        lat = ds['latitude'][:]
-        lon = ds['longitude'][:]
-    except IndexError:
-        lat = ds['lat'][:]
-        lon = ds['lon'][:]
-    try:
-        X = ds[this_varname][:, :, :]
-        X_units = ds[this_varname].units
-    except IndexError:
-        alt_name = name_conversion[this_varname]
-        X = ds[alt_name][:, :, :]
-        X_units = ds[alt_name].units
-
-    # Check unit consistency
-    if this_varname == 'slp':
-        assert X_units == 'Pa'
-    if this_varname == 'pr':
-        assert X_units == 'mm'
-
-    X_time = ds['time'][:]
-    X_time_units = ds['time'].units
-
-    # Code dealing with various time units
-    if X_time_units == 'year A.D.':
-        X_time = X_time.compressed()  # saved as masked array, but no values are masked
-        X_year = np.floor(X_time)
-        X_month = (np.ceil((X_time - X_year)*12)).astype(int)
-
-    else:
-        # For more standard time formats
-        cld = utime(X_time_units)
-        dt = cld.num2date(X_time)
-        X_year = np.array([t.year for t in dt])
-        X_month = np.array([t.month for t in dt])
-
-    if 'climatology' in ds.variables:
-        climo = ds['climatology'][:]
-        # Add climatology to X
-        for counter, this_month in enumerate(X_month):
-            X[counter, ...] += climo[this_month - 1, ...]
-
-    # Permute all data to be time, lat, lon
-    lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
-    lon_idx = np.where(np.isin(X.shape, len(lon)))[0][0]
-    time_idx = np.where(np.isin(X.shape, len(X_time)))[0][0]
-
-    X = np.transpose(X, (time_idx, lat_idx, lon_idx))
-    ntime, nlat, nlon = np.shape(X)
-
-    # Subset data
-    subset = np.isin(X_year, valid_years)
-    X = X[subset, :]
-    X_year = X_year[subset]
-    X_month = X_month[subset]
-
-    # Also need to check if our data spans the full valid period
-    subset = np.isin(df_shifted['year'].values, X_year)
-    df_shifted = df_shifted.loc[subset, :]
-
-    # Check that all dimensions look consistent
-    assert len(df_shifted) == np.shape(X)[0]
-
-    # Put into dataset
-    time = pd.date_range(start='%04d-%02d' % (X_year[0], X_month[0]),
-                         freq='M', periods=len(X_year))
-    dsX = xr.Dataset(data_vars={this_varname: (('time', 'lat', 'lon'), X)},
-                     coords={'time': time,
-                             'lat': lat,
-                             'lon': lon},
-                     attrs={'%s units' % this_varname: X_units})
-
-    return dsX, df_shifted, df
 
 
 def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
@@ -261,5 +139,5 @@ if __name__ == '__main__':
 
     # Get data and modes
     for v, f in zip(varname, filename):
-        dsX, df_shifted, _ = get_obs(v, f, valid_years, mode_lag, cvdp_loc)
+        dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag, cvdp_loc)
         fit_linear_model(dsX, df_shifted, v, AMO_smooth_length, workdir)
