@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
 import calendar
-from cftime import utime
+from datetime import timedelta
 
 
 def lowpass_butter(fs, lowcut, order,  data, axis=-1):
@@ -741,23 +741,62 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
     df_shifted = df_shifted.loc[subset, :]
 
     # Load dataset
-    # TODO, switch to xarray
-    ds = Dataset(this_filename, 'r')
+    if type(this_filename) == 'str':  # Observational data
+        ds = xr.open_dataset(this_filename)
+    else:  # CESM data
+        if this_varname == 'pr':  # CESM splits up precipitation into convective and large scale
+            ds = xr.open_mfdataset(this_filename)
+            this_filename2 = [f.replace('PRECC', 'PRECL') for f in this_filename]
+            ds2 = xr.open_mfdataset(this_filename2)
+        else:
+            ds = xr.open_mfdataset(this_filename)
+
+        # CESM output saved with one day delay, so need to move back
+        ds = ds.assign_coords(time=ds.time-timedelta(days=1))
 
     # Load data
     try:
-        lat = ds['latitude'][:]
-        lon = ds['longitude'][:]
-    except IndexError:
-        lat = ds['lat'][:]
-        lon = ds['lon'][:]
+        lat = ds['latitude'].values
+        lon = ds['longitude'].values
+    except KeyError:
+        lat = ds['lat'].values
+        lon = ds['lon'].values
     try:
-        X = ds[this_varname][:, :, :]
+        X = ds[this_varname]
         X_units = ds[this_varname].units
-    except IndexError:
+    except KeyError:
         alt_name = name_conversion[this_varname]
-        X = ds[alt_name][:, :, :]
+        X = ds[alt_name]
         X_units = ds[alt_name].units
+
+    # Pull out values, since we'll be permuting the data / changing units, etc
+    # For CESM1-LE precipitation, need to add up convective and large scale
+    if name_conversion[this_varname] == 'PRECC':
+        X = X.values + ds2.PRECL.values
+    else:
+        X = X.values
+
+    X_time = ds['time']
+    if 'units' in ds['time']:  # nonstandard, from BEST
+        assert ds['time'].units == 'year A.D.'
+        X_year = np.floor(X_time)
+        X_month = (np.ceil((X_time - X_year)*12)).astype(int)
+    else:
+        X_year = ds['time.year']
+        X_month = ds['time.month']
+
+    # Change units if necessary
+    if X_units == 'K':
+        # convert to celsius
+        X -= 273.15
+        X_units = 'deg C'
+    elif X_units == 'm/s':
+        # convert to mm (total over month)
+        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
+        seconds_per_month = 60*60*24*np.array(days_per_month)
+        X *= seconds_per_month[:, np.newaxis, np.newaxis]  # m per month
+        X *= 1000  # mm per month
+        X_units = 'mm'
 
     # Check unit consistency
     if this_varname == 'slp':
@@ -765,24 +804,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
     if this_varname == 'pr':
         assert X_units == 'mm'
 
-    X_time = ds['time'][:]
-    X_time_units = ds['time'].units
-
-    # Code dealing with various time units
-    if X_time_units == 'year A.D.':
-        X_time = X_time.compressed()  # saved as masked array, but no values are masked
-        X_year = np.floor(X_time)
-        X_month = (np.ceil((X_time - X_year)*12)).astype(int)
-
-    else:
-        # For more standard time formats
-        cld = utime(X_time_units)
-        dt = cld.num2date(X_time)
-        X_year = np.array([t.year for t in dt])
-        X_month = np.array([t.month for t in dt])
-
     if 'climatology' in ds.variables:
-        climo = ds['climatology'][:]
+        climo = ds['climatology'].values
         # Add climatology to X
         for counter, this_month in enumerate(X_month):
             X[counter, ...] += climo[this_month - 1, ...]
