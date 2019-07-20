@@ -741,7 +741,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
     df_shifted = df_shifted.loc[subset, :]
 
     # Load dataset
-    if type(this_filename) == 'str':  # Observational data
+    if isinstance(this_filename, str):  # Observational data
         ds = xr.open_dataset(this_filename)
     else:  # CESM data
         if this_varname == 'pr':  # CESM splits up precipitation into convective and large scale
