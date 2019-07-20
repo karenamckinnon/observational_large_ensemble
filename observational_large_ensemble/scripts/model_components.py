@@ -176,7 +176,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
         for kk in range(n_members):
             # Choose the starting points of the blocks
             # Blocks must always start with the same month, so as not to swap monthly sensitivities
-            potential_starts = np.arange(ntime - nblocks + 1)[::12]
+            potential_starts = np.arange(ntime - block_use_mo)[::12]
             these_starts = np.random.choice(potential_starts, nblocks, replace=True)
 
             # Figure out when we'll need to add additional points
