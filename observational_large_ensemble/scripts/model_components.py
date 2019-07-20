@@ -121,7 +121,7 @@ def get_all_surrogates(surr_dir, prefix):
     """
 
     # Use a single set of LE surrogates
-    if 'LE-001' not in surr_dir:
+    if ('LE-' in surr_dir) & ('LE-001' not in surr_dir):
         this_member = (surr_dir.split('/')[-2]).split('-')[-1]
         surr_dir = surr_dir.replace(this_member, '001')
 

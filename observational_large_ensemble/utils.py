@@ -777,7 +777,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
         X = X.values
 
     X_time = ds['time']
-    if 'units' in ds['time']:  # nonstandard, from BEST
+    if 'units' in ds['time'].attrs:  # nonstandard, from BEST
         assert ds['time'].units == 'year A.D.'
         X_year = np.floor(X_time)
         X_month = (np.ceil((X_time - X_year)*12)).astype(int)

@@ -77,8 +77,9 @@ if __name__ == '__main__':
         name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
         cesm_names = list(name_conversion.values())
         surr_prefix = 'CESM1-CAM5-BGC-LE_#1_surrogate_mode_time_series_020'
-
         this_member = int((args.case).split('-')[-1])
+        cvdp_file = '%s/CESM1-CAM5-BGC-LE_#%i.cvdp_data.1920-2017.nc' % (cvdp_loc, this_member)
+
         base_directory = '/gpfs/fs1/collections/cdg/data/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly'
         # Historical filenames for CESM. Will need to append part of RCP8.5 to get full period
         filenames = []
