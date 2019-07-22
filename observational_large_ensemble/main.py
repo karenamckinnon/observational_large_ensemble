@@ -54,7 +54,7 @@ if __name__ == '__main__':
     long_varnames = ['near surface air temperature', 'precipitation', 'sea level pressure']
 
     workdir_base = '/glade/work/mckinnon/obsLE/parameters/%s' % args.case
-    output_dir = '/glade/work/mckinnon/obsLE/output/%s' % args.case
+    output_dir = '/glade/scratch/mckinnon/obsLE/output/%s' % args.case
 
     if args.case == 'obs':
         cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
@@ -100,7 +100,10 @@ if __name__ == '__main__':
             second_f = f
             second_f = second_f.replace('B20TRC5CNBDRD', 'BRCP85C5CNBDRD')
             early_time = f.split('.')[-2]
-            second_f = second_f.replace(early_time, '200601-208012')
+            if this_member < 34:
+                second_f = second_f.replace(early_time, '200601-208012')
+            else:
+                second_f = second_f.replace(early_time, '200601-210012')
             f = [f, second_f]
 
             dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag, cvdp_file, name_conversion)
