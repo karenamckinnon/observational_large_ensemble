@@ -30,7 +30,6 @@ if not os.path.isdir(tmp_dir):
 # Historical filenames for CESM. Will need to append part of RCP8.5 to get full period
 valid_members = np.hstack((np.arange(1, 36), np.arange(101, 106)))
 
-
 # Match time to member of Obs-LE
 dummy_file = '/glade/work/mckinnon/obsLE/output/obs/tas/tas_member001.nc'
 ds_dummy = xr.open_dataset(dummy_file)
@@ -70,7 +69,6 @@ for var in varnames:
             ds2 = xr.open_mfdataset([hist_file2, future_file2], concat_dim='time')
             da = ds[this_var]
             da = da.copy(data=(ds[this_var].values + ds2['PRECL'].values))
-
         else:
             da = ds[this_var]
 
@@ -86,14 +84,15 @@ for var in varnames:
     EM -= EM.mean(dim='time')
 
     # Change units if necessary
-    X_units = EM.attrs['units']
+    X_units = da.attrs['units']
+    X = EM.values
     if X_units == 'K':
         # convert to celsius
-        EM = EM.copy(data=EM[this_var] - 273.15)
+        X -= 273.15
+        EM = EM.copy(data=X)
         X_units = 'deg C'
     elif X_units == 'm/s':
         # convert to mm (total over month)
-        X = EM[this_var]
         X_year = EM['time.year'].values
         X_month = EM['time.month'].values
         days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
@@ -104,7 +103,6 @@ for var in varnames:
         X_units = 'mm'
         EM.attrs['long_name'] = 'Total monthly precipitation'
 
-    EM = EM.rename({this_var: var})
+    EM = EM.rename(var)
     EM.attrs['units'] = X_units
-
     EM.to_netcdf('%s/%s' % (signal_dir, savename))
