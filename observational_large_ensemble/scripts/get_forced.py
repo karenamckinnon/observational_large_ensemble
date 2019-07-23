@@ -1,8 +1,3 @@
-# CESM1-LE forced trend
-
-# (1) Append datasets
-
-
 import numpy as np
 import os
 from subprocess import check_call
@@ -12,10 +7,10 @@ import xarray as xr
 import calendar
 
 
+# TODO: integrate with rest of code base
+
 varnames = ['tas', 'pr', 'slp']
 long_varnames = ['near surface air temperature', 'precipitation', 'sea level pressure']
-
-# CESM
 
 name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
 cesm_names = list(name_conversion.values())
