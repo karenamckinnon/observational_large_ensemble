@@ -200,6 +200,10 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             df_shifted = df_shifted.assign(constant=np.ones(len(df_shifted)))
 
             # Ensure that the months are lined up correctly
+            start_idx = np.where(df_shifted['month'] == ds['time.month'].values[0])[0][0]
+            df_shifted = df_shifted[start_idx:]
+            df_shifted = df_shifted.reset_index()
+
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
             AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
             ENSO = ds_beta.beta_ENSO[modes_idx, ...]*df_shifted['ENSO'][:, np.newaxis, np.newaxis]
