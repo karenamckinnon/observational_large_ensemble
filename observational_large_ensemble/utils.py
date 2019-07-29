@@ -618,6 +618,10 @@ def shift_df(df, shift, shift_names):
     df_shifted = new_df
     del new_df
 
+    # Reset index
+    df_shifted.reset_index(inplace=True)
+    df_shifted = df_shifted.drop(['index'], axis=1)
+
     return df_shifted
 
 
