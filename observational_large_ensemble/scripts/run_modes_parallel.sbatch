@@ -1,6 +1,6 @@
 #!/bin/sh
 
-#SBATCH --time=02:00:00
+#SBATCH --time=00:10:00
 #SBATCH --output=logs/parallel.log
 #SBATCH --partition=dav
 #SBATCH --account=P93300313
@@ -22,6 +22,9 @@ mode_nc=CESM1-CAM5-BGC-LE_#1.cvdp_data.1920-2017.nc
 # workdir
 workdir=/glade/work/mckinnon/obsLE/parameters/LE-001
 
+# AMO lowpass frequency
+FS=$(echo "scale=2; 1/10" | bc)
+
 # the --exclusive to srun makes srun use distinct CPUs for each job step
 # -N1 -n1 allocates a single core to each task
 srun="srun --exclusive -N1 -n1"
@@ -39,4 +42,4 @@ parallel="parallel --delay .2 -j $SLURM_NTASKS --joblog logs/runtask.log --resum
 # parallel uses ::: to separate options. Here {0..99} is a shell expansion
 # so parallel will run the command passing the numbers 0 through 99
 # via argument {1}
-$parallel "$srun python create_surrogate_mode_sets.py -N 20 -S {1} -f $mode_nc -d $workdir -fs 1/10 > logs/parallel_{1}.log" ::: {00..49}
+$parallel "$srun python create_surrogate_mode_sets.py -N 20 -S {1} -f $mode_nc -d $workdir -fs $FS > logs/parallel_{1}.log" ::: {00..49}

@@ -1,6 +1,7 @@
 from observational_large_ensemble import utils as olens_utils
 import numpy as np
 import os
+from subprocess import check_call
 
 
 def create_surrogate_modes(n_ens_members, workdir_base, mode_nc, AMO_cutoff_freq=1/10, this_seed=123):
@@ -29,7 +30,7 @@ def create_surrogate_modes(n_ens_members, workdir_base, mode_nc, AMO_cutoff_freq
     modes_fname = '%s/%s' % (cvdp_loc, mode_nc)  # modes
 
     # Load original versions
-    df = olens_utils.create_mode_df(modes_fname)
+    df = olens_utils.create_mode_df(modes_fname, AMO_cutoff_freq)
     ntime = len(df)
 
     # Create ENSO with seasonality
@@ -67,7 +68,9 @@ def create_surrogate_modes(n_ens_members, workdir_base, mode_nc, AMO_cutoff_freq
     # Save
     savedir = '%s/surrogates_noENSOseasonality' % workdir_base
     if not os.path.isdir(savedir):
-        os.mkdir(savedir)
+        cmd = 'mkdir -p %s' % savedir
+        check_call(cmd.split())
+
     savename = '%s_surrogate_mode_time_series_%03d_%i.npz' % (mode_nc.split('.')[0], n_ens_members, this_seed)
     saveloc = '%s/%s' % (savedir, savename)
 
