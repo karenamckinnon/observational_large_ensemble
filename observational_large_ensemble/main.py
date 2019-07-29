@@ -40,7 +40,7 @@ if __name__ == '__main__':
     n_members = args.n_members
 
     # Parameters consistent across case
-    AMO_smooth_length = 21  # number of years to apply AMO smoothing
+    AMO_smooth_length = 11  # number of years to apply AMO smoothing
     mode_lag = 1  # number of months to lag between mode time series and climate response
 
     # Need odd-window for AMO
