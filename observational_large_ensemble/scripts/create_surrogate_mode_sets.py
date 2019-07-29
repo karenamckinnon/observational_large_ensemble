@@ -62,8 +62,15 @@ def create_surrogate_modes(n_ens_members, workdir_base, mode_nc, AMO_cutoff_freq
         tmp = olens_utils.iaaft(df['AMO'].values)
         while type(tmp) == int:  # case of no convergence
             tmp = olens_utils.iaaft(df['AMO'].values)
-        # Lowpass AMO time series
-        amo_surr[:, kk] = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
+
+        # Perform lowpass filter on AMO
+        if AMO_cutoff_freq > 0:
+            amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
+        else:  # no filter
+            amo_lowpass = tmp[0]
+        # Reset to unit sigma
+        amo_lowpass /= np.std(amo_lowpass)
+        amo_surr[:, kk] = amo_lowpass
 
     # Save
     savedir = '%s/surrogates_noENSOseasonality' % workdir_base
