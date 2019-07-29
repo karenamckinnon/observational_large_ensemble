@@ -38,7 +38,7 @@ def fit_linear_model(dsX, df, this_varname, workdir):
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
 
-    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO']
+    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO_lowpass']
     if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor, will happen for SLP
         predictors_names.remove('F')
 
