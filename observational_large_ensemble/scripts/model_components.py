@@ -7,7 +7,7 @@ from subprocess import check_call
 import pandas as pd
 
 
-def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
+def fit_linear_model(dsX, df, this_varname, workdir):
     """Save linear regression model parameters.
 
     Parameters
@@ -18,8 +18,6 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
         Mode and forced time series
     this_varname : str
         Variable name for which to fit regression
-    AMO_smooth_length : int
-        Number of years over which to smooth AMO
     workdir : str
         Where to save output
 
@@ -30,24 +28,12 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
 
     # Fit OLS model to variable X (deterministic)
     # Predictors: constant, GM-EM (forced component), ENSO, PDO, AMO
-    # Since AMO is smoothed, can only use a subset of the data
     # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
-
-    # Smooth AMO
-    AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[:, 'AMO'].values,
-                                                     M=AMO_smooth_length*12)
-
-    # Reset AMO to unit standard deviation
-    AMO_smoothed /= np.std(AMO_smoothed)
-
-    df = df.loc[valid_indices, :]
-    df = df.assign(AMO=AMO_smoothed)
 
     # Add constant
     df = df.assign(constant=np.ones(len(df)))
 
-    # Subset data to match AMO
-    da = dsX[this_varname][valid_indices, ...]
+    da = dsX[this_varname]
     attrs = dsX.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
@@ -152,7 +138,7 @@ def get_all_surrogates(surr_dir, prefix):
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                        mode_lag, AMO_smooth_length, long_varnames, data_names):
+                        mode_lag, long_varnames, data_names):
 
     for var_ct, this_varname in enumerate(varnames):
 
@@ -206,16 +192,6 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             # Subselect to the correct number of years
             # Note that for the surrogate modes, the month matters, but the year is meaningless
             df_shifted = df_shifted.loc[:len(valid_years)*12, :]
-
-            # Smooth AMO, and subselect rest to same period
-            AMO_smoothed, valid_indices = olens_utils.smooth(df_shifted.loc[:, 'AMO'].values,
-                                                             M=AMO_smooth_length*12)
-
-            # Reset AMO to unit standard deviation
-            AMO_smoothed /= np.std(AMO_smoothed)
-
-            df_shifted = df_shifted.loc[valid_indices, :]
-            df_shifted = df_shifted.assign(AMO=AMO_smoothed)
 
             # Match the mode month to the climate noise time series
             modes_idx = np.searchsorted(ds_beta.month, climate_noise['time.month'])
