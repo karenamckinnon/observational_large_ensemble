@@ -678,7 +678,7 @@ def plot_sst_patterns(lat, lon, beta, ice_loc, modename, savename=None):
         plt.close()
 
 
-def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_conversion):
+def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_cutoff_freq, name_conversion):
     """Return observational data and associated time series of modes for a given variable.
 
     Parameters
@@ -693,6 +693,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
         Number of months to lag the climate variable response from the mode time series
     cvdp_file : str
         Full path to CVDP data
+    AMO_cutoff_freq : float
+        Cut off frequency for Butterworth filter of AMO (1/years)
     name_conversion : dict
         Mapping from standard names to names in specific data sources
 
@@ -732,6 +734,11 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
 
     # Add EM, GM time series to it
     df = df.assign(F=gm_em)
+
+    # Perform lowpass filter on AMO
+    if AMO_cutoff_freq > 0:
+        AMO_lowpass = lowpass_butter(12, AMO_cutoff_freq, 3, df.loc[:, 'AMO'].values)
+        df = df.assign(AMO=AMO_lowpass)
 
     # Shift modes in time
     df_shifted = shift_df(df, mode_lag, ['year', 'month', 'season', 'F'])
