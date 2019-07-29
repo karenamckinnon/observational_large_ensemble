@@ -183,7 +183,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             PDO_orth_ts = PDO_orth_surr[:, kk]
 
             mode_df = pd.DataFrame({'month': mode_months,
-                                    'AMO': AMO_ts,
+                                    'AMO_lowpass': AMO_ts,
                                     'ENSO': ENSO_ts,
                                     'PDO_orth': PDO_orth_ts})
 
@@ -201,12 +201,12 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
 
             # Ensure that the months are lined up correctly
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
-            AMO = ds_beta.beta_AMO[modes_idx, ...]*df_shifted['AMO'][:, np.newaxis, np.newaxis]
+            AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
             ENSO = ds_beta.beta_ENSO[modes_idx, ...]*df_shifted['ENSO'][:, np.newaxis, np.newaxis]
             PDO_orth = ds_beta.beta_PDO_orth[modes_idx, ...]*df_shifted['PDO_orth'][:, np.newaxis, np.newaxis]
             mean = ds_beta.beta_constant[modes_idx, ...]*df_shifted['constant'][:, np.newaxis, np.newaxis]
 
-            detrended_values = climate_noise.copy(data=climate_noise.values + AMO + ENSO + PDO_orth + mean)
+            detrended_values = climate_noise.copy(data=climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean)
             description = ('Member %03d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[var_ct]) +
                            'Data is from %s. The forced component must be added separately.' % data_names[var_ct])
