@@ -239,11 +239,14 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members)
         Array (ntime x n_ens_members) of surrogate orthogonalized PDO time series
     amo_surr : numpy.ndarray
         Array (ntime x n_ens_members) of surrogate low-passed AMO time series
+    months : numpy.ndarray
+        Months associated with the surrogate time series. Important when fit_seasonal=True
     """
 
     # Load original versions
     df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
     ntime = len(df)
+    months = df['month'].values
 
     np.random.seed(this_seed)
 
@@ -278,4 +281,4 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members)
         amo_lowpass /= np.std(amo_lowpass)
         amo_surr[:, kk] = amo_lowpass
 
-    return enso_surr, pdo_surr, amo_surr
+    return enso_surr, pdo_surr, amo_surr, months
