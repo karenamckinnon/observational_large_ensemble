@@ -189,20 +189,18 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
 
             # Use the indices for one month before the climate response
             df_shifted = olens_utils.shift_df(mode_df, mode_lag, ['month'])
+            # Ensure that the months are lined up correctly
+            start_idx = np.where(df_shifted['month'] == climate_noise['time.month'].values[0])[0][0]
+            df_shifted = df_shifted[start_idx:]
             # Subselect to the correct number of years
             # Note that for the surrogate modes, the month matters, but the year is meaningless
-            df_shifted = df_shifted.loc[:len(valid_years)*12, :]
+            df_shifted = df_shifted[:len(valid_years)*12]
 
             # Match the mode month to the climate noise time series
             modes_idx = np.searchsorted(ds_beta.month, climate_noise['time.month'])
 
             # Add a constant
             df_shifted = df_shifted.assign(constant=np.ones(len(df_shifted)))
-
-            # Ensure that the months are lined up correctly
-            start_idx = np.where(df_shifted['month'] == ds['time.month'].values[0])[0][0]
-            df_shifted = df_shifted[start_idx:]
-            df_shifted = df_shifted.reset_index()
 
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
             AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
