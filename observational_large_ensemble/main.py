@@ -50,7 +50,7 @@ if __name__ == '__main__':
     long_varnames = ['near surface air temperature', 'precipitation', 'sea level pressure']
 
     workdir_base = '/glade/work/mckinnon/obsLE/parameters/%s' % args.case
-    output_dir = '/glade/scratch/mckinnon/obsLE/output/%s/testing' % args.case
+    output_dir = '/glade/scratch/mckinnon/obsLE/output/%s' % args.case
 
     if args.case == 'obs':
         cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
@@ -108,9 +108,7 @@ if __name__ == '__main__':
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
 
     # Calculate block size
-    # block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
-    block_use = 2
-    block_use_mo = 12*block_use
+    block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
 
     # Get surrogate modes
     AMO_surr, ENSO_surr, PDO_orth_surr, mode_months = mc.get_all_surrogates('%s/surrogates_noENSOseasonality'
