@@ -215,3 +215,67 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             detrended_values.attrs['description'] = description
             filename = '%s/%s/%s_member%03d.nc' % (output_dir, this_varname, this_varname, kk + 1)
             detrended_values.to_netcdf(filename)
+
+
+def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members):
+    """Create random mode sets.
+
+    Parameters
+    ----------
+    cvdp_file : str
+        Full file path to CVDP netcdf containing observed or in-model modes
+    AMO_cutoff_freq : float
+        Cut off frequency for Butterworth filter of AMO (1/years)
+    this_seed : int
+        Random seed for reproducibility
+    n_ens_members : int
+        Number of mode sets to create
+
+    Returns
+    -------
+    enso_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate ENSO time series
+    pdo_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate orthogonalized PDO time series
+    amo_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate low-passed AMO time series
+    """
+
+    # Load original versions
+    df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
+    ntime = len(df)
+
+    np.random.seed(this_seed)
+
+    enso_surr = np.empty((ntime, n_ens_members))
+    pdo_surr = np.empty_like(enso_surr)
+    amo_surr = np.empty_like(pdo_surr)
+
+    for kk in range(n_ens_members):
+        # ENSO (accounting for seasonality of variance)
+        tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
+        enso_surr[:, kk] = tmp[0]
+
+        # PDO
+        tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        pdo_surr[:, kk] = tmp[0]
+
+        # AMO (create surrogates on unfiltered data)
+        tmp = olens_utils.iaaft(df['AMO'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['AMO'].values)
+
+        # Perform lowpass filter on AMO
+        if AMO_cutoff_freq > 0:
+            amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
+        else:  # no filter
+            amo_lowpass = tmp[0]
+        # Reset to unit sigma
+        amo_lowpass /= np.std(amo_lowpass)
+        amo_surr[:, kk] = amo_lowpass
+
+    return enso_surr, pdo_surr, amo_surr
