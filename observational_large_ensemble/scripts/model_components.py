@@ -2,7 +2,6 @@ import numpy as np
 import os
 from observational_large_ensemble import utils as olens_utils
 import xarray as xr
-from glob import glob
 from subprocess import check_call
 import pandas as pd
 
@@ -82,58 +81,6 @@ def fit_linear_model(dsX, df, this_varname, workdir):
 
     ds_beta.to_netcdf('%s/beta.nc' % var_dir)
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
-
-
-def get_all_surrogates(surr_dir, prefix):
-    """Combine all surrogate mode time series into a single array for each.
-
-    Parameters
-    ----------
-    surr_dir : str
-        Directory with all surrogate files (produced via run_modes_parallel.sbatch)
-    prefix : str
-        Common component of all surrogate filenames
-
-    Returns
-    -------
-    AMO_surr : numpy.ndarray
-        Set of AMO surrogates
-    ENSO_surr : numpy.ndarray
-        Set of ENSO surrogates
-    PDO_orth_surr : numpy.ndarray
-        Set of PDO_orth surrogates, where PDO_orth is the Gram-Schmidt orthogonal version of PDO to ENSO
-    mode_months : numpy.ndarray
-        The month, [1, 12], for the mode time series.
-    """
-
-    # Use a single set of LE surrogates
-    if ('LE-' in surr_dir) & ('LE-001' not in surr_dir):
-        this_member = (surr_dir.split('/')[-2]).split('-')[-1]
-        surr_dir = surr_dir.replace(this_member, '001')
-
-    fnames = sorted(glob('%s/%s*.npz' % (surr_dir, prefix)))
-    nsurr_per_file = int(fnames[0].split('_')[-2])
-    total_surr = len(fnames)*nsurr_per_file
-
-    fopen = np.load(fnames[0])
-    mode_months = fopen['months']
-    ntime = len(mode_months)
-
-    AMO_surr = np.empty((ntime, nsurr_per_file, len(fnames)))
-    ENSO_surr = np.empty_like(AMO_surr)
-    PDO_orth_surr = np.empty_like(AMO_surr)
-
-    for ct, this_f in enumerate(fnames):
-        fopen = np.load(this_f)
-        AMO_surr[:, :, ct] = fopen['amo_surr']
-        ENSO_surr[:, :, ct] = fopen['enso_surr']
-        PDO_orth_surr[:, :, ct] = fopen['pdo_surr']
-
-    AMO_surr = np.reshape(AMO_surr, (ntime, total_surr))
-    ENSO_surr = np.reshape(ENSO_surr, (ntime, total_surr))
-    PDO_orth_surr = np.reshape(PDO_orth_surr, (ntime, total_surr))
-
-    return AMO_surr, ENSO_surr, PDO_orth_surr, mode_months
 
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
