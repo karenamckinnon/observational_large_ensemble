@@ -7,4 +7,6 @@ source ./scripts/download_data.sh
 
 # Create modes
 # Note that this starts a batch job, so will not be done immediately! Comment out if already finished
-sbatch ./scripts/run_modes_parallel.sbatch
+cd ./scripts
+sbatch run_modes_parallel.sbatch
+cd ..

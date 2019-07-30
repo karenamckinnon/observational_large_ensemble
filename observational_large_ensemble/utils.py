@@ -141,13 +141,15 @@ def forced_trend(varname, cvdp_loc):
     return gm_em, gm_em_units, time, time_units
 
 
-def create_mode_df(fname):
+def create_mode_df(fname, AMO_cutoff_freq):
     """Return a dataframe with the mode time series (unfiltered) and preprocessed time columns.
 
     Parameters
     ----------
     fname : str
         Full path to file containing mode time series. Originally from CVDP.
+    AMO_cutoff_freq : float
+        Cut off frequency for Butterworth filter of AMO (1/years)
 
     Returns
     -------
@@ -174,14 +176,22 @@ def create_mode_df(fname):
     # Create version of PDO that is orthogonal to ENSO using Gram-Schmidt method
     pdo_orth = pdo_ts - np.dot(pdo_ts, enso_ts)/np.dot(enso_ts, enso_ts)*enso_ts
 
-    # Set ENSO and PDO_orth to unit sigma
+    # Perform lowpass filter on AMO
+    if AMO_cutoff_freq > 0:
+        amo_lowpass = lowpass_butter(12, AMO_cutoff_freq, 3, amo_ts)
+    else:  # no filter
+        amo_lowpass = amo_ts
+
+    # Set mode time series to unit sigma
     enso_ts /= np.std(enso_ts)
     pdo_orth /= np.std(pdo_orth)
     pdo_ts /= np.std(pdo_ts)
+    amo_ts /= np.std(amo_ts)
+    amo_lowpass /= np.std(amo_lowpass)
 
-    df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'PDO', 'ENSO', 'PDO_orth'])
+    df = pd.DataFrame(columns=['year', 'month', 'season', 'AMO', 'AMO_lowpass', 'PDO', 'ENSO', 'PDO_orth'])
     df = df.assign(year=year, month=month, season=season_names,
-                   AMO=amo_ts, PDO=pdo_ts, ENSO=enso_ts, PDO_orth=pdo_orth)
+                   AMO=amo_ts, AMO_lowpass=amo_lowpass, PDO=pdo_ts, ENSO=enso_ts, PDO_orth=pdo_orth)
 
     return df
 
@@ -608,6 +618,10 @@ def shift_df(df, shift, shift_names):
     df_shifted = new_df
     del new_df
 
+    # Reset index
+    df_shifted.reset_index(inplace=True)
+    df_shifted = df_shifted.drop(['index'], axis=1)
+
     return df_shifted
 
 
@@ -678,7 +692,7 @@ def plot_sst_patterns(lat, lon, beta, ice_loc, modename, savename=None):
         plt.close()
 
 
-def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_conversion):
+def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_cutoff_freq, name_conversion):
     """Return observational data and associated time series of modes for a given variable.
 
     Parameters
@@ -693,6 +707,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
         Number of months to lag the climate variable response from the mode time series
     cvdp_file : str
         Full path to CVDP data
+    AMO_cutoff_freq : float
+        Cut off frequency for Butterworth filter of AMO (1/years)
     name_conversion : dict
         Mapping from standard names to names in specific data sources
 
@@ -728,7 +744,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, name_
         gm_em_units = 'mm'
 
     # Get dataframe of modes
-    df = create_mode_df(cvdp_file)
+    df = create_mode_df(cvdp_file, AMO_cutoff_freq)
 
     # Add EM, GM time series to it
     df = df.assign(F=gm_em)

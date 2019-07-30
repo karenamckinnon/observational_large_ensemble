@@ -7,7 +7,7 @@ from subprocess import check_call
 import pandas as pd
 
 
-def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
+def fit_linear_model(dsX, df, this_varname, workdir):
     """Save linear regression model parameters.
 
     Parameters
@@ -18,8 +18,6 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
         Mode and forced time series
     this_varname : str
         Variable name for which to fit regression
-    AMO_smooth_length : int
-        Number of years over which to smooth AMO
     workdir : str
         Where to save output
 
@@ -30,29 +28,17 @@ def fit_linear_model(dsX, df, this_varname, AMO_smooth_length, workdir):
 
     # Fit OLS model to variable X (deterministic)
     # Predictors: constant, GM-EM (forced component), ENSO, PDO, AMO
-    # Since AMO is smoothed, can only use a subset of the data
     # Model fit is monthly dependent cognizant of the seasonal cycle in teleconnections
-
-    # Smooth AMO
-    AMO_smoothed, valid_indices = olens_utils.smooth(df.loc[:, 'AMO'].values,
-                                                     M=AMO_smooth_length*12)
-
-    # Reset AMO to unit standard deviation
-    AMO_smoothed /= np.std(AMO_smoothed)
-
-    df = df.loc[valid_indices, :]
-    df = df.assign(AMO=AMO_smoothed)
 
     # Add constant
     df = df.assign(constant=np.ones(len(df)))
 
-    # Subset data to match AMO
-    da = dsX[this_varname][valid_indices, ...]
+    da = dsX[this_varname]
     attrs = dsX.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
 
-    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO']
+    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO_lowpass']
     if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor, will happen for SLP
         predictors_names.remove('F')
 
@@ -152,7 +138,7 @@ def get_all_surrogates(surr_dir, prefix):
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                        mode_lag, AMO_smooth_length, long_varnames, data_names):
+                        mode_lag, long_varnames, data_names):
 
     for var_ct, this_varname in enumerate(varnames):
 
@@ -197,25 +183,18 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             PDO_orth_ts = PDO_orth_surr[:, kk]
 
             mode_df = pd.DataFrame({'month': mode_months,
-                                    'AMO': AMO_ts,
+                                    'AMO_lowpass': AMO_ts,
                                     'ENSO': ENSO_ts,
                                     'PDO_orth': PDO_orth_ts})
 
             # Use the indices for one month before the climate response
             df_shifted = olens_utils.shift_df(mode_df, mode_lag, ['month'])
+            # Ensure that the months are lined up correctly
+            start_idx = np.where(df_shifted['month'] == climate_noise['time.month'].values[0])[0][0]
+            df_shifted = df_shifted[start_idx:]
             # Subselect to the correct number of years
             # Note that for the surrogate modes, the month matters, but the year is meaningless
-            df_shifted = df_shifted.loc[:len(valid_years)*12, :]
-
-            # Smooth AMO, and subselect rest to same period
-            AMO_smoothed, valid_indices = olens_utils.smooth(df_shifted.loc[:, 'AMO'].values,
-                                                             M=AMO_smooth_length*12)
-
-            # Reset AMO to unit standard deviation
-            AMO_smoothed /= np.std(AMO_smoothed)
-
-            df_shifted = df_shifted.loc[valid_indices, :]
-            df_shifted = df_shifted.assign(AMO=AMO_smoothed)
+            df_shifted = df_shifted[:len(valid_years)*12]
 
             # Match the mode month to the climate noise time series
             modes_idx = np.searchsorted(ds_beta.month, climate_noise['time.month'])
@@ -223,14 +202,13 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             # Add a constant
             df_shifted = df_shifted.assign(constant=np.ones(len(df_shifted)))
 
-            # Ensure that the months are lined up correctly
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
-            AMO = ds_beta.beta_AMO[modes_idx, ...]*df_shifted['AMO'][:, np.newaxis, np.newaxis]
+            AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
             ENSO = ds_beta.beta_ENSO[modes_idx, ...]*df_shifted['ENSO'][:, np.newaxis, np.newaxis]
             PDO_orth = ds_beta.beta_PDO_orth[modes_idx, ...]*df_shifted['PDO_orth'][:, np.newaxis, np.newaxis]
             mean = ds_beta.beta_constant[modes_idx, ...]*df_shifted['constant'][:, np.newaxis, np.newaxis]
 
-            detrended_values = climate_noise.copy(data=climate_noise.values + AMO + ENSO + PDO_orth + mean)
+            detrended_values = climate_noise.copy(data=climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean)
             description = ('Member %03d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[var_ct]) +
                            'Data is from %s. The forced component must be added separately.' % data_names[var_ct])

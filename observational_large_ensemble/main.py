@@ -8,12 +8,12 @@ from subprocess import check_call
 from glob import glob
 
 
-def setup(varname, filename, AMO_smooth_length, mode_lag, workdir_base):
+def setup(varname, filename, AMO_cutoff_freq, mode_lag, workdir_base):
 
     # Create dictionary of parameters to save in working directory
     param_dict = {'varname': varname,
                   'filename': filename,
-                  'AMO_smooth_length': AMO_smooth_length,
+                  'AMO_cutoff_freq': AMO_cutoff_freq,
                   'mode_lag': mode_lag}
 
     # Output folder, named with current date
@@ -40,12 +40,8 @@ if __name__ == '__main__':
     n_members = args.n_members
 
     # Parameters consistent across case
-    AMO_smooth_length = 11  # number of years to apply AMO smoothing
+    AMO_cutoff_freq = 1/10  # Cut off frequency for Butterworth filter of AMO (1/years)
     mode_lag = 1  # number of months to lag between mode time series and climate response
-
-    # Need odd-window for AMO
-    if AMO_smooth_length % 2 == 0:
-        AMO_smooth_length += 1
 
     valid_years = np.arange(1921, 2015)
     cvdp_loc = '/glade/work/mckinnon/CVDP'
@@ -66,12 +62,13 @@ if __name__ == '__main__':
         surr_prefix = 'HadISST_surrogate_mode_time_series_020'
 
         # Save parameter files
-        workdir = setup(varnames, filenames, AMO_smooth_length, mode_lag, workdir_base)
+        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, workdir_base)
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
-            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag, cvdp_file, name_conversion)
-            mc.fit_linear_model(dsX, df_shifted, v, AMO_smooth_length, workdir)
+            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
+                                                     cvdp_file, AMO_cutoff_freq, name_conversion)
+            mc.fit_linear_model(dsX, df_shifted, v, workdir)
 
     elif 'LE' in args.case:
         name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
@@ -92,7 +89,7 @@ if __name__ == '__main__':
         data_names = ['CESM1-LE', 'CESM1-LE', 'CESM1-LE']
 
         # Save parameter files
-        workdir = setup(varnames, filenames, AMO_smooth_length, mode_lag, workdir_base)
+        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, workdir_base)
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
@@ -106,15 +103,16 @@ if __name__ == '__main__':
                 second_f = second_f.replace(early_time, '200601-210012')
             f = [f, second_f]
 
-            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag, cvdp_file, name_conversion)
-            mc.fit_linear_model(dsX, df_shifted, v, AMO_smooth_length, workdir)
+            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
+                                                     cvdp_file, AMO_cutoff_freq, name_conversion)
+            mc.fit_linear_model(dsX, df_shifted, v, workdir)
 
     # Calculate block size
     block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
 
     # Get surrogate modes
-    AMO_surr, ENSO_surr, PDO_orth_surr, mode_months = mc.get_all_surrogates('%s/surrogates' % workdir_base,
-                                                                            surr_prefix)
+    AMO_surr, ENSO_surr, PDO_orth_surr, mode_months = mc.get_all_surrogates('%s/surrogates_noENSOseasonality'
+                                                                            % workdir_base, surr_prefix)
     _, total_surr = np.shape(AMO_surr)
 
     # Can only make as many members as there are surrogate time series
@@ -124,4 +122,4 @@ if __name__ == '__main__':
     # Put it all together, and save to netcdf files
     mc.combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                            AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                           mode_lag, AMO_smooth_length, long_varnames, data_names)
+                           mode_lag, long_varnames, data_names)
