@@ -111,13 +111,9 @@ if __name__ == '__main__':
     block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
 
     # Get surrogate modes
-    AMO_surr, ENSO_surr, PDO_orth_surr, mode_months = mc.get_all_surrogates('%s/surrogates_noENSOseasonality'
-                                                                            % workdir_base, surr_prefix)
-    _, total_surr = np.shape(AMO_surr)
-
-    # Can only make as many members as there are surrogate time series
-    n_members = np.min((n_members, total_surr))
-    print('Creating %d ensemble members' % n_members)
+    this_seed = 456
+    ENSO_surr, PDO_orth_surr, AMO_surr, mode_months = mc.create_surrogate_modes(cvdp_file, AMO_cutoff_freq,
+                                                                                this_seed, n_members)
 
     # Put it all together, and save to netcdf files
     mc.combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,

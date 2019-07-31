@@ -330,13 +330,15 @@ def plot_spectra(P, s, ci, plot_ci=True, savename=None, **kwargs):
     return fig, ax
 
 
-def iaaft(x):
+def iaaft(x, fit_seasonal=False):
     """Return a surrogate time series based on IAAFT.
 
     Parameters
     ----------
     x : numpy array
         Original time series
+    fit_seasonal : bool
+        Should the monthly amplitudes be matched? Use True for ENSO.
 
     Returns
     -------
@@ -345,6 +347,15 @@ def iaaft(x):
     this_iter : int
         Number of iterations until convergence
     """
+
+    # To account for some sampling variability, the seasonal cycle in ENSO variance is calculated
+    # with resampling for each surrogate time series
+    if fit_seasonal:
+        nyrs = int(np.floor(len(x)/12))
+        resampled_x = x[:(nyrs*12)].reshape((nyrs, 12))
+        idx = np.random.choice(np.arange(nyrs), nyrs, replace=True)
+        resampled_x = resampled_x[idx, :]
+        seasonal_sigma = np.std(resampled_x, axis=0)
 
     xbar = np.mean(x)
     x -= xbar  # remove mean
@@ -368,8 +379,17 @@ def iaaft(x):
 
         # iteration 2: amplitude adjustment
         x_old = x_new
-        index = np.argsort(np.real(x_new))
+        index = np.argsort(np.real(x_old))
         x_new[index] = x_sort
+        x_new = np.real(x_new)
+
+        # Rescale the seasonal standard deviations to match original data
+        if fit_seasonal:
+            this_sigma = np.array([np.std(x_new[mo::12]) for mo in range(12)])
+            scaling = seasonal_sigma/this_sigma
+
+            for mo in range(12):
+                x_new[mo::12] = scaling[mo]*x_new[mo::12]
 
         criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
         delta_criterion = np.abs(criterion_new - criterion_old)
@@ -383,152 +403,6 @@ def iaaft(x):
     x_new = np.real(x_new)
 
     return x_new, this_iter
-
-
-def iaaft_seasonal(x):
-    """Return a surrogate time series based on IAAFT, retaining seasonality of amplitudes.
-
-    Parameters
-    ----------
-    x : numpy array
-        Original time series
-
-    Returns
-    -------
-    x_new : numpy array
-        Surrogate time series
-    this_iter : int
-        Number of iterations until convergence
-    """
-
-    xbar = np.mean(x)
-    x -= xbar  # remove mean
-
-    # Sort and rank original values, but only within a month
-    rank = np.zeros((len(x), ), dtype=int)
-    x_sort = np.empty_like(x)
-    for mo in range(12):
-        this_x = x[mo::12]
-        this_rank = np.argsort(this_x)
-        x_sort[mo::12] = this_x[this_rank]
-        rank[mo::12] = this_rank
-
-    # Store original fft coefficients
-    I_k = np.abs(np.fft.fft(x))
-
-    # Shuffle without replacement
-    # (All amplitudes preserved, but autocorrelation not preserved)
-    x_new = np.empty_like(x)
-    for mo in range(12):
-        this_x = x[mo::12]
-        x_new[mo::12] = np.random.choice(this_x, len(this_x), replace=False)
-
-    delta_criterion = 1
-    criterion_new = 100
-    max_iters = 1000000
-    this_iter = 0
-
-    # Because of the constraint on seasonality, the method does not converge as quickly or well.
-    while delta_criterion > 3e-7:
-        criterion_old = criterion_new
-
-        # iteration 1: spectral adjustment
-        # don't do anything with seasonality here
-        x_old = x_new
-        x_fourier = np.fft.fft(x_old)
-        adjusted_coeff = I_k*x_fourier/np.abs(x_fourier)
-        x_new = np.fft.ifft(adjusted_coeff)  # back to time space
-
-        # iteration 2: amplitude adjustment
-        x_old = x_new
-
-        index = np.argsort(np.real(x_new))
-        x_new[index] = x_sort
-
-        for mo in range(12):
-            this_x = np.real(x_old[mo::12])
-
-            # Swap rank back to original
-            this_index = np.argsort(this_x)
-
-            tmp_x = np.empty_like(this_x)
-            tmp_x[this_index] = x_sort[mo::12]
-
-            x_new[mo::12] = tmp_x
-
-        criterion_new = 1/np.std(x)*np.sqrt(1/len(x)*np.sum((I_k - np.abs(x_fourier))**2))
-        delta_criterion = np.abs(criterion_new - criterion_old)
-
-        if this_iter > max_iters:
-            return 0
-
-        this_iter += 1
-
-    x_new += xbar
-    x_new = np.real(x_new)
-    return x_new, this_iter
-
-
-def create_matched_surrogates_1d(x, y):
-    """Create surrogate time series with enforced empirical coherence.
-
-    UPDATE: do not use!
-
-    In the spectral domain, the model is
-    yhat = ahat*xhat + nhat
-
-    Thus, results will differ if x and y are switched.
-
-    The surrogate time series are produced via IAAFT.
-
-    Parameters
-    ----------
-    x : numpy array
-        The first (independent) time series
-    y : numpy array
-        The second (dependent) time series
-
-    Returns
-    -------
-    new_x : numpy array
-        A surrogate version of x
-    new_y : numpy array
-        A surrogate version of y
-    """
-
-    xhat = np.fft.fft(x)
-    yhat = np.fft.fft(y)
-
-    Phi_xx = np.dot(xhat[np.newaxis, :], np.conj(xhat[:, np.newaxis]))/len(xhat)
-    Phi_xy = np.dot(yhat[np.newaxis, :], np.conj(xhat[:, np.newaxis]))/len(xhat)
-
-    ahat = Phi_xy/Phi_xx
-    nhat = yhat - ahat*xhat
-
-    # Get new estimate of x
-    x_surr, this_iter = iaaft(x)
-    while this_iter > 99:
-        print('DEBUG: number of iterations is %i' % this_iter)
-        x_surr, this_iter = iaaft(x)
-
-    # Fourier transform
-    x_surr_hat = np.fft.fft(x_surr)
-    # Get part of y that is coherent
-    y_coherent_hat = ahat*x_surr_hat
-
-    # Return to time domain
-    y_surr = np.real(np.fft.ifft(y_coherent_hat).flatten())
-
-    # Add random version of n
-    n_surr, this_iter = iaaft(np.fft.ifft(nhat).flatten())
-    while this_iter > 99:
-        print('DEBUG: number of iterations is %i' % this_iter)
-        x_surr, this_iter = iaaft(x)
-
-    new_x = x_surr
-    new_y = y_surr + n_surr
-
-    return new_x, new_y
 
 
 def save_2d_netcdf(lat, lon, vals, varname, units, savename, description, overwrite=False):

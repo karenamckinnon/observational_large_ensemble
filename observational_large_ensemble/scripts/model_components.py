@@ -2,7 +2,6 @@ import numpy as np
 import os
 from observational_large_ensemble import utils as olens_utils
 import xarray as xr
-from glob import glob
 from subprocess import check_call
 import pandas as pd
 
@@ -84,58 +83,6 @@ def fit_linear_model(dsX, df, this_varname, workdir):
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
 
 
-def get_all_surrogates(surr_dir, prefix):
-    """Combine all surrogate mode time series into a single array for each.
-
-    Parameters
-    ----------
-    surr_dir : str
-        Directory with all surrogate files (produced via run_modes_parallel.sbatch)
-    prefix : str
-        Common component of all surrogate filenames
-
-    Returns
-    -------
-    AMO_surr : numpy.ndarray
-        Set of AMO surrogates
-    ENSO_surr : numpy.ndarray
-        Set of ENSO surrogates
-    PDO_orth_surr : numpy.ndarray
-        Set of PDO_orth surrogates, where PDO_orth is the Gram-Schmidt orthogonal version of PDO to ENSO
-    mode_months : numpy.ndarray
-        The month, [1, 12], for the mode time series.
-    """
-
-    # Use a single set of LE surrogates
-    if ('LE-' in surr_dir) & ('LE-001' not in surr_dir):
-        this_member = (surr_dir.split('/')[-2]).split('-')[-1]
-        surr_dir = surr_dir.replace(this_member, '001')
-
-    fnames = sorted(glob('%s/%s*.npz' % (surr_dir, prefix)))
-    nsurr_per_file = int(fnames[0].split('_')[-2])
-    total_surr = len(fnames)*nsurr_per_file
-
-    fopen = np.load(fnames[0])
-    mode_months = fopen['months']
-    ntime = len(mode_months)
-
-    AMO_surr = np.empty((ntime, nsurr_per_file, len(fnames)))
-    ENSO_surr = np.empty_like(AMO_surr)
-    PDO_orth_surr = np.empty_like(AMO_surr)
-
-    for ct, this_f in enumerate(fnames):
-        fopen = np.load(this_f)
-        AMO_surr[:, :, ct] = fopen['amo_surr']
-        ENSO_surr[:, :, ct] = fopen['enso_surr']
-        PDO_orth_surr[:, :, ct] = fopen['pdo_surr']
-
-    AMO_surr = np.reshape(AMO_surr, (ntime, total_surr))
-    ENSO_surr = np.reshape(ENSO_surr, (ntime, total_surr))
-    PDO_orth_surr = np.reshape(PDO_orth_surr, (ntime, total_surr))
-
-    return AMO_surr, ENSO_surr, PDO_orth_surr, mode_months
-
-
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
                         mode_lag, long_varnames, data_names):
@@ -215,3 +162,70 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             detrended_values.attrs['description'] = description
             filename = '%s/%s/%s_member%03d.nc' % (output_dir, this_varname, this_varname, kk + 1)
             detrended_values.to_netcdf(filename)
+
+
+def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members):
+    """Create random mode sets.
+
+    Parameters
+    ----------
+    cvdp_file : str
+        Full file path to CVDP netcdf containing observed or in-model modes
+    AMO_cutoff_freq : float
+        Cut off frequency for Butterworth filter of AMO (1/years)
+    this_seed : int
+        Random seed for reproducibility
+    n_ens_members : int
+        Number of mode sets to create
+
+    Returns
+    -------
+    enso_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate ENSO time series
+    pdo_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate orthogonalized PDO time series
+    amo_surr : numpy.ndarray
+        Array (ntime x n_ens_members) of surrogate low-passed AMO time series
+    months : numpy.ndarray
+        Months associated with the surrogate time series. Important when fit_seasonal=True
+    """
+
+    # Load original versions
+    df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
+    ntime = len(df)
+    months = df['month'].values
+
+    np.random.seed(this_seed)
+
+    enso_surr = np.empty((ntime, n_ens_members))
+    pdo_surr = np.empty_like(enso_surr)
+    amo_surr = np.empty_like(pdo_surr)
+
+    for kk in range(n_ens_members):
+        # ENSO (accounting for seasonality of variance)
+        tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
+        enso_surr[:, kk] = tmp[0]
+
+        # PDO
+        tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['PDO_orth'].values)
+        pdo_surr[:, kk] = tmp[0]
+
+        # AMO (create surrogates on unfiltered data)
+        tmp = olens_utils.iaaft(df['AMO'].values)
+        while type(tmp) == int:  # case of no convergence
+            tmp = olens_utils.iaaft(df['AMO'].values)
+
+        # Perform lowpass filter on AMO
+        if AMO_cutoff_freq > 0:
+            amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
+        else:  # no filter
+            amo_lowpass = tmp[0]
+        # Reset to unit sigma
+        amo_lowpass /= np.std(amo_lowpass)
+        amo_surr[:, kk] = amo_lowpass
+
+    return enso_surr, pdo_surr, amo_surr, months

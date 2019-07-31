@@ -5,7 +5,7 @@ from glob import glob
 from datetime import timedelta
 import xarray as xr
 import calendar
-import spharm
+# import spharm
 
 
 def fit_trend(da, this_month, N):
@@ -49,7 +49,6 @@ if __name__ == '__main__':
 
     cesm_directory = '/gpfs/fs1/collections/cdg/data/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly'
     obsle_directory = '/glade/scratch/mckinnon/obsLE/output'
-    forced_directory = '/glade/work/mckinnon/obsLE/output/forced_component'
 
     tmp_dir = '/glade/scratch/mckinnon/temp'
     if not os.path.isdir(tmp_dir):
@@ -61,39 +60,41 @@ if __name__ == '__main__':
     nmembers = len(valid_members)
     ensemble_names = 'Obs-LE', 'CESM1-LE'
 
-    # Match time to member of Obs-LE
-    dummy_file = '/glade/work/mckinnon/obsLE/output/obs/tas/tas_member001.nc'
+    # get time, nlat, nlon from a random file
+    dummy_file = '/glade/scratch/mckinnon/obsLE/output/LE-001/tas/tas_member001.nc'
     ds_dummy = xr.open_dataset(dummy_file)
     start_time = '%04d-%02d' % (ds_dummy['time.year'][0], ds_dummy['time.month'][0])
     end_time = '%04d-%02d' % (ds_dummy['time.year'][-1], ds_dummy['time.month'][-1])
+    nlat = len(ds_dummy['lat'])
+    nlon = len(ds_dummy['lon'])
 
     cesm_var = name_conversion[var]
 
     # Get data - need to regrid model to data
-    dummy_file = '/glade/work/mckinnon/obsLE/output/obs/%s/%s_member001.nc' % (var, var)
-    da = xr.open_dataarray(dummy_file)
-    obs_lat = da['lat'].values
-    obs_lon = da['lon'].values
-    nlatO = len(obs_lat)
-    nlonO = len(obs_lon)
-    spO = spharm.Spharmt(nlonO, nlatO, gridtype='regular', legfunc='computed')
-
-    dummy_file = '/glade/scratch/mckinnon/obsLE/output/LE-001/%s/%s_member001.nc' % (var, var)
-    da = xr.open_dataarray(dummy_file)
-    _, nlatM, nlonM = np.shape(da)
-    spM = spharm.Spharmt(nlonM, nlatM, gridtype='regular', legfunc='computed')
-
-    # Switch lon to 0, 360
-    # Switch lat to increasing
-    obs_lon[obs_lon < 0] += 360
-    idx_lon = np.argsort(obs_lon)
-    lon = obs_lon[idx_lon]
-
-    idx_lat = np.argsort(obs_lat)
-    lat = obs_lat[idx_lat]
-
-    nlat = len(lat)
-    nlon = len(lon)
+#    dummy_file = '/glade/work/mckinnon/obsLE/output/obs/%s/%s_member001.nc' % (var, var)
+#    da = xr.open_dataarray(dummy_file)
+#    obs_lat = da['lat'].values
+#    obs_lon = da['lon'].values
+#    nlatO = len(obs_lat)
+#    nlonO = len(obs_lon)
+#    spO = spharm.Spharmt(nlonO, nlatO, gridtype='regular', legfunc='computed')
+#
+#    dummy_file = '/glade/scratch/mckinnon/obsLE/output/LE-001/%s/%s_member001.nc' % (var, var)
+#    da = xr.open_dataarray(dummy_file)
+#    _, nlatM, nlonM = np.shape(da)
+#    spM = spharm.Spharmt(nlonM, nlatM, gridtype='regular', legfunc='computed')
+#
+#    # Switch lon to 0, 360
+#    # Switch lat to increasing
+#    obs_lon[obs_lon < 0] += 360
+#    idx_lon = np.argsort(obs_lon)
+#    lon = obs_lon[idx_lon]
+#
+#    idx_lat = np.argsort(obs_lat)
+#    lat = obs_lat[idx_lat]
+#
+#    nlat = len(lat)
+#    nlon = len(lon)
 
     savedir = '/glade/work/mckinnon/obsLE/validation/%s/%s' % (ens_name, var)
     if not os.path.isdir(savedir):
@@ -151,20 +152,20 @@ if __name__ == '__main__':
                 X_units = 'mm'
 
             # Regrid
-            ntime = X.shape[0]
-            X_interp = np.empty((ntime, nlatO, nlonO))
-            for tt in range(ntime):
-                X_interp[tt, ...] = spharm.regrid(spM, spO, X[tt, ...])
-
-            new_da = xr.DataArray(X_interp,
+#            ntime = X.shape[0]
+#            X_interp = np.empty((ntime, nlatO, nlonO))
+#            for tt in range(ntime):
+#                X_interp[tt, ...] = spharm.regrid(spM, spO, X[tt, ...])
+#
+            new_da = xr.DataArray(X,
                                   dims=('time', 'lat', 'lon'),
                                   coords={'time': da.time,
-                                          'lat': lat,
-                                          'lon': lon})
+                                          'lat': da.lat,
+                                          'lon': da.lon})
 
             BETA[counter, ...] = fit_trend(new_da, this_month, N)
         var_beta = np.var(BETA, axis=0)
-        np.savez(savename, var_beta=var_beta, lat=lat, lon=lon)
+        np.savez(savename, var_beta=var_beta, lat=da.lat.values, lon=da.lon.values)
 
     elif 'LE-' in ens_name:
         # Loop through each member of the Obs-LE, calculate trends, and get sigma across them
@@ -177,19 +178,19 @@ if __name__ == '__main__':
             da = xr.open_dataarray(f)
             X = da.values
 
-            # Regrid
-            ntime = X.shape[0]
-            X_interp = np.empty((ntime, nlat, nlon))
-            for tt in range(ntime):
-                X_interp[tt, ...] = spharm.regrid(spM, spO, X[tt, ...])
+#            # Regrid
+#            ntime = X.shape[0]
+#            X_interp = np.empty((ntime, nlat, nlon))
+#            for tt in range(ntime):
+#                X_interp[tt, ...] = spharm.regrid(spM, spO, X[tt, ...])
+#
+#            new_da = xr.DataArray(X_interp,
+#                                  dims=('time', 'lat', 'lon'),
+#                                  coords={'time': da.time,
+#                                          'lat': lat,
+#                                          'lon': lon})
 
-            new_da = xr.DataArray(X_interp,
-                                  dims=('time', 'lat', 'lon'),
-                                  coords={'time': da.time,
-                                          'lat': lat,
-                                          'lon': lon})
-
-            BETA[ct_f, ...] = fit_trend(new_da, this_month, N)
+            BETA[ct_f, ...] = fit_trend(da, this_month, N)
 
         var_beta = np.var(BETA, axis=0)
-        np.savez(savename, var_beta=var_beta, lat=lat, lon=lon)
+        np.savez(savename, var_beta=var_beta, lat=da.lat.values, lon=da.lon.values)
