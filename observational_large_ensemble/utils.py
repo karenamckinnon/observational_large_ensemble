@@ -630,6 +630,12 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
     subset = np.isin(df_shifted['year'].values, valid_years)
     df_shifted = df_shifted.loc[subset, :]
 
+    # Reset the forced trend time series to a mean of zero
+    # This allows for the forced trend to be straightforwardly added in later
+    F = df_shifted['F'].values
+    F -= np.mean(F)
+    df_shifted = df_shifted.assign(F=F)
+
     # Load dataset
     if isinstance(this_filename, str):  # Observational data
         ds = xr.open_dataset(this_filename)
@@ -638,6 +644,8 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
             ds = xr.open_mfdataset(this_filename)
             this_filename2 = [f.replace('PRECC', 'PRECL') for f in this_filename]
             ds2 = xr.open_mfdataset(this_filename2)
+            # CESM output saved with one day delay, so need to move back
+            ds2 = ds2.assign_coords(time=ds2.time-timedelta(days=1))
         else:
             ds = xr.open_mfdataset(this_filename)
 
