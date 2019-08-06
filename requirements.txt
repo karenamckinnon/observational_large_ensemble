@@ -1,0 +1,9 @@
+numpy==1.15.4
+pandas==0.24.2
+Cartopy==0.17.0
+setuptools==40.8.0
+matplotlib==2.2.3
+xarray==0.11.3
+click==6.7
+scipy==1.2.1
+netCDF4==1.5.1.2
