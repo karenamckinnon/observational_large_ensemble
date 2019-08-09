@@ -8,7 +8,17 @@ The approach is based upon modeling each variable as a linear combination of a m
 
 The forced component is estimated using the methodology of Dai et al., 2015, Nature Climate Change. Specifically, the observations are regressed against the time series of the global mean, ensemble mean of each variable. The forced trend for sea level pressure is assumed to be zero.
 
-More complete technical and scientific documentation can be found in [McKinnon and Deser, 2018, Journal of Climate](https://journals.ametsoc.org/doi/full/10.1175/JCLI-D-17-0901.1). 
+More complete technical and scientific documentation can be found in McKinnon and Deser, 2018, Journal of Climate. However, there are a small number of changes between the methodology documented in McKinnon and Deser (2018) and this code base, which are not currently published. Specifically:
+
+- The data product is monthly, rather than seasonal.
+- The seasonality of ENSO variance is included.
+- Rather than creating two orthogonal modes from applying PCA the ENSO and PDO, PDO is orthogonalized with respect to ENSO using the Gram-Schmidt orthogonalization procedure.
+- The block boostrap size is estimated using the iterative formula of Wilks (1997), Journal of Climate, rather than fixed at two years.
+- The AMO time series is lowpass filtered using a cutoff-frequency of 10 years.
+
+The code is designed to be applied either to gridded observational datasets or to the CESM1-LE, which is used as a testbed for the methodology. 
+
+Please contact Karen McKinnon (kmckinnon@ucla.edu) if you are using the code or methods in your work.
 
 * Free software: MIT license
 
