@@ -2,31 +2,15 @@
 Observational Large Ensemble
 ============================
 
+This package contains code for creation of an "Observational Large Ensemble" of monthly temperature, precipitation, and sea level pressure. 
 
-.. image:: https://img.shields.io/pypi/v/observational_large_ensemble.svg
-        :target: https://pypi.python.org/pypi/observational_large_ensemble
+The approach is based upon modeling each variable as a linear combination of a mean, trend, contribution from large-scale modes of variability, and residual climate noise. The ensemble is created through randomization of the latter two components. The time series of the large-scale modes are randomized through application of the Iterative Amplitude Adjusted Fourier Transform. The climate noise is block bootstrapped in time. 
 
-.. image:: https://img.shields.io/travis/karenamckinnon/observational_large_ensemble.svg
-        :target: https://travis-ci.org/karenamckinnon/observational_large_ensemble
+The forced component is estimated using the methodology of Dai et al., 2015, Nature Climate Change. Specifically, the observations are regressed against the time series of the global mean, ensemble mean of each variable. The forced trend for sea level pressure is assumed to be zero.
 
-.. image:: https://readthedocs.org/projects/observational-large-ensemble/badge/?version=latest
-        :target: https://observational-large-ensemble.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
-
-
-
-
-Creates the Observational Large Ensemble, as well as validation simulations within the CESM Large Ensemble
-
+More complete technical and scientific documentation can be found in [McKinnon and Deser, 2018, Journal of Climate](https://journals.ametsoc.org/doi/full/10.1175/JCLI-D-17-0901.1). 
 
 * Free software: MIT license
-* Documentation: https://observational-large-ensemble.readthedocs.io.
-
-
-Features
---------
-
-* TODO
 
 Credits
 -------
