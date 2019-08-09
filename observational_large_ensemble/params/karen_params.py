@@ -1,3 +1,5 @@
+"""Example parameter file for Observational Large Ensemble code."""
+
 import numpy as np
 
 valid_years = np.arange(1921, 2015)
