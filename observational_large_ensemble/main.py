@@ -73,7 +73,8 @@ if __name__ == '__main__':
             dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
-            mc.save_forced_component(df_shifted, v, output_dir, workdir)
+            if v != 'slp':  # forced component for SLP assumed to be zero
+                mc.save_forced_component(df_shifted, v, output_dir, workdir)
 
     elif 'LE' in args.case:
         name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
@@ -111,7 +112,8 @@ if __name__ == '__main__':
             dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
-            mc.save_forced_component(df_shifted, v, output_dir, workdir)
+            if v != 'slp':  # forced component for SLP assumed to be zero
+                mc.save_forced_component(df_shifted, v, output_dir, workdir)
 
     # Calculate block size
     block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
