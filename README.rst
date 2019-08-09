@@ -16,7 +16,7 @@ More complete technical and scientific documentation can be found in McKinnon an
 - The block boostrap size is estimated using the iterative formula of Wilks (1997), Journal of Climate, rather than fixed at two years.
 - The AMO time series is lowpass filtered using a cutoff-frequency of 10 years.
 
-The code is designed to be applied either to gridded observational datasets or to the CESM1-LE, which is used as a testbed for the methodology. 
+The code is designed to be applied either to gridded observational datasets or to the CESM1-LE, which is used as a testbed for the methodology. All file paths for application to the CESM1-LE are with respect NCAR Cheyenne.
 
 Please contact Karen McKinnon (kmckinnon@ucla.edu) if you are using the code or methods in your work.
 
