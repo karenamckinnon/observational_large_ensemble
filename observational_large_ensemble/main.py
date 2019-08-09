@@ -1,4 +1,3 @@
-import numpy as np
 from datetime import datetime
 import os
 import utils as olens_utils
@@ -39,24 +38,29 @@ if __name__ == '__main__':
 
     n_members = args.n_members
 
-    # Parameters consistent across case
-    AMO_cutoff_freq = 1/10  # Cut off frequency for Butterworth filter of AMO (1/years)
-    mode_lag = 1  # number of months to lag between mode time series and climate response
-
-    valid_years = np.arange(1921, 2015)
-    cvdp_loc = '/glade/work/mckinnon/CVDP'
+    # Modify this to your own parameter file with paths
+    from params import karen_params as params
+    valid_years = params.valid_years
+    cvdp_loc = params.cvdp_loc
+    AMO_cutoff_freq = params.AMO_cutoff_freq
+    mode_lag = params.mode_lag
+    workdir_base = params.workdir_base
+    output_dir = params.output_dir
+    tas_dir = params.tas_dir
+    pr_dir = params.pr_dir
+    slp_dir = params.slp_dir
 
     varnames = ['tas', 'pr', 'slp']
     long_varnames = ['near surface air temperature', 'precipitation', 'sea level pressure']
 
-    workdir_base = '/glade/work/mckinnon/obsLE/parameters/%s' % args.case
-    output_dir = '/glade/scratch/mckinnon/obsLE/output/%s' % args.case
+    workdir_base = '%s/%s' % (workdir_base, args.case)
+    output_dir = '%s/%s' % (output_dir, args.case)
 
     if args.case == 'obs':
         cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
-        filenames = ['/glade/work/mckinnon/BEST/Complete_TAVG_LatLong1.nc',
-                     '/glade/work/mckinnon/GPCC/precip.mon.total.1x1.v2018.nc',
-                     '/glade/work/mckinnon/20CRv2c/prmsl.mon.mean.nc']
+        filenames = ['%s/Complete_TAVG_LatLong1.nc' % tas_dir,
+                     '%s/precip.mon.total.1x1.v2018.nc' % pr_dir,
+                     '%s/prmsl.mon.mean.nc' % slp_dir]
         data_names = [f.split('/')[-2] for f in filenames]
         name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
         surr_prefix = 'HadISST_surrogate_mode_time_series_020'
