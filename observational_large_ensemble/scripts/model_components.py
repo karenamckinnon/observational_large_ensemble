@@ -229,3 +229,47 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members)
         amo_surr[:, kk] = amo_lowpass
 
     return enso_surr, pdo_surr, amo_surr, months
+
+
+def save_forced_component(df, this_var, output_dir, workdir):
+    """Calculate and save to netcdf the estimated forced component.
+
+    The forced component is estimated by regressing the data onto the CESM1-LE global mean, ensemble mean
+    of the same variable.
+
+    Parameters
+    ----------
+    df : pd.Dataframe
+        Dataframe containing time series of GM-EM forcing
+    this_var : str
+        Standard varname (tas, pr, slp)
+    output_dir : str
+        Location to save forced trend
+    workdir : str
+        Location of parameter files (sensitivity to forced trend at each month/gridbox)
+
+    Returns
+    -------
+    Nothing. Forced component saved as netcdf.
+
+    """
+
+    param_file = '%s/%s/beta.nc' % (workdir, this_var)
+    ds_beta = xr.open_dataset(param_file)
+
+    # Match the month of the sensitivity parameter, beta, to the month of the forcing
+    modes_idx = np.searchsorted(ds_beta.month, df['month'].values)
+
+    # Recreate the time vector
+    time = pd.date_range('%04d-%02d' % (df.year.values[0], df.month.values[0]),
+                         freq='M', periods=len(df))
+
+    # Forced component estimated as time series of CESM1-LE GM-EM times sensitivity at each
+    # gridbox (estimated from OLS regression)
+    F = ds_beta.beta_F[modes_idx, ...]*df['F'][:, np.newaxis, np.newaxis]
+    F = F.rename({'month': 'time'})
+    F = F.assign_coords(time=time)
+    savename = '%s/%s/%s_forced.nc' % (output_dir, this_var, this_var)
+    F.attrs['description'] = ('Forced component estimated through regressing data onto '
+                              'CESM1-LE global mean, ensemble mean time series.')
+    F.to_netcdf(savename)
