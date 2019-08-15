@@ -289,6 +289,7 @@ def save_forced_component(df, this_var, output_dir, workdir):
     F = ds_beta.beta_F[modes_idx, ...]*df['F'][:, np.newaxis, np.newaxis]
     F = F.rename({'month': 'time'})
     F = F.assign_coords(time=time)
+    F = F.rename('forced_component')
 
     if not os.path.isdir('%s/%s' % (output_dir, this_var)):
         cmd = 'mkdir -p %s/%s' % (output_dir, this_var)
@@ -300,6 +301,7 @@ def save_forced_component(df, this_var, output_dir, workdir):
 
     # For ease, also save the constant term
     C = ds_beta.beta_constant
+    C = C.rename('climatology')
     savename = '%s/%s/%s_climatology.nc' % (output_dir, this_var, this_var)
     C.attrs['description'] = 'Monthly mean climatology'
     C.to_netcdf(savename)
