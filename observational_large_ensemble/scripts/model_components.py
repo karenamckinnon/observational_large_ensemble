@@ -285,6 +285,10 @@ def save_forced_component(df, this_var, output_dir, workdir):
     F = ds_beta.beta_F[modes_idx, ...]*df['F'][:, np.newaxis, np.newaxis]
     F = F.rename({'month': 'time'})
     F = F.assign_coords(time=time)
+
+    if not os.path.isdir('%s/%s' % (output_dir, this_var)):
+        cmd = 'mkdir -p %s/%s' % (output_dir, this_var)
+        check_call(cmd.split())
     savename = '%s/%s/%s_forced.nc' % (output_dir, this_var, this_var)
     F.attrs['description'] = ('Forced component estimated through regressing data onto '
                               'CESM1-LE global mean, ensemble mean time series.')
