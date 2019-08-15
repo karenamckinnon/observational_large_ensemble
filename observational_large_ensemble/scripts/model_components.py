@@ -149,19 +149,35 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             # Add a constant
             df_shifted = df_shifted.assign(constant=np.ones(len(df_shifted)))
 
+            # Add the forced trend
+            if this_varname != 'slp':
+                forced_file = '%s/%s/%s_forced.nc' % (output_dir, this_varname, this_varname)
+                daF = xr.open_dataarray(forced_file)
+                # Check that the time aligns
+                assert (daF['time.month'] == climate_noise['time.month']).all()
+                assert (daF['time.year'] == climate_noise['time.year']).all()
+
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
             AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
             ENSO = ds_beta.beta_ENSO[modes_idx, ...]*df_shifted['ENSO'][:, np.newaxis, np.newaxis]
             PDO_orth = ds_beta.beta_PDO_orth[modes_idx, ...]*df_shifted['PDO_orth'][:, np.newaxis, np.newaxis]
             mean = ds_beta.beta_constant[modes_idx, ...]*df_shifted['constant'][:, np.newaxis, np.newaxis]
 
-            detrended_values = climate_noise.copy(data=climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean)
-            description = ('Member %03d of the Observational Large Ensemble ' % (kk + 1) +
+            if this_varname != 'slp':
+                data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean + daF.values
+            else:
+                data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean
+
+            if this_varname == 'pr':
+                data[data < 0] = 0  # precipitation can't be negative
+
+            new_values = climate_noise.copy(data=data)
+            description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[var_ct]) +
-                           'Data is from %s. The forced component must be added separately.' % data_names[var_ct])
-            detrended_values.attrs['description'] = description
-            filename = '%s/%s/%s_member%03d.nc' % (output_dir, this_varname, this_varname, kk + 1)
-            detrended_values.to_netcdf(filename)
+                           'Data is from %s.' % data_names[var_ct])
+            new_values.attrs['description'] = description
+            filename = '%s/%s/%s_member%04d.nc' % (output_dir, this_varname, this_varname, kk + 1)
+            new_values.to_netcdf(filename)
 
 
 def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members):
