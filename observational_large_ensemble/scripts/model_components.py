@@ -158,10 +158,14 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 assert (daF['time.year'] == climate_noise['time.year']).all()
 
             assert (df_shifted.month.values == climate_noise['time.month'].values).all()
-            AMO_lowpass = ds_beta.beta_AMO_lowpass[modes_idx, ...]*df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis]
-            ENSO = ds_beta.beta_ENSO[modes_idx, ...]*df_shifted['ENSO'][:, np.newaxis, np.newaxis]
-            PDO_orth = ds_beta.beta_PDO_orth[modes_idx, ...]*df_shifted['PDO_orth'][:, np.newaxis, np.newaxis]
-            mean = ds_beta.beta_constant[modes_idx, ...]*df_shifted['constant'][:, np.newaxis, np.newaxis]
+            AMO_lowpass = (ds_beta.beta_AMO_lowpass[modes_idx, ...].values *
+                           df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis].values)
+            ENSO = (ds_beta.beta_ENSO[modes_idx, ...].values *
+                    df_shifted['ENSO'][:, np.newaxis, np.newaxis].values)
+            PDO_orth = (ds_beta.beta_PDO_orth[modes_idx, ...].values *
+                        df_shifted['PDO_orth'][:, np.newaxis, np.newaxis].values)
+            mean = (ds_beta.beta_constant[modes_idx, ...].values *
+                    df_shifted['constant'][:, np.newaxis, np.newaxis].values)
 
             if this_varname != 'slp':
                 data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean + daF.values
