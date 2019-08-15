@@ -273,3 +273,9 @@ def save_forced_component(df, this_var, output_dir, workdir):
     F.attrs['description'] = ('Forced component estimated through regressing data onto '
                               'CESM1-LE global mean, ensemble mean time series.')
     F.to_netcdf(savename)
+
+    # For ease, also save the constant term
+    C = ds_beta.beta_constant
+    savename = '%s/%s/%s_climatology.nc' % (output_dir, this_var, this_var)
+    C.attrs['description'] = 'Monthly mean climatology'
+    C.to_netcdf(savename)
