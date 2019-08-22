@@ -640,12 +640,18 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
     if isinstance(this_filename, str):  # Observational data
         ds = xr.open_dataset(this_filename)
     else:  # CESM data
-        if this_varname == 'pr':  # CESM splits up precipitation into convective and large scale
+        if this_varname == 'pr':  # CESM splits up precipitation into convective and large scale, liquid+ice vs snow
             ds = xr.open_mfdataset(this_filename)
             this_filename2 = [f.replace('PRECC', 'PRECL') for f in this_filename]
             ds2 = xr.open_mfdataset(this_filename2)
+            this_filename3 = [f.replace('PRECC', 'PRECSC') for f in this_filename]
+            ds3 = xr.open_mfdataset(this_filename3)
+            this_filename4 = [f.replace('PRECC', 'PRECSL') for f in this_filename]
+            ds4 = xr.open_mfdataset(this_filename4)
             # CESM output saved with one day delay, so need to move back
             ds2 = ds2.assign_coords(time=ds2.time-timedelta(days=1))
+            ds3 = ds3.assign_coords(time=ds3.time-timedelta(days=1))
+            ds4 = ds4.assign_coords(time=ds4.time-timedelta(days=1))
         else:
             ds = xr.open_mfdataset(this_filename)
 
@@ -670,7 +676,7 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
     # Pull out values, since we'll be permuting the data / changing units, etc
     # For CESM1-LE precipitation, need to add up convective and large scale
     if name_conversion[this_varname] == 'PRECC':
-        X = X.values + ds2.PRECL.values
+        X = X.values + ds2.PRECL.values + ds3.PRECSC.values + ds4.PRECSL.values
     else:
         X = X.values
 

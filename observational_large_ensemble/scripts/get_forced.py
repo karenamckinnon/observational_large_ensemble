@@ -56,14 +56,28 @@ for var in varnames:
         future_file = glob(future_str)[0]
         ds = xr.open_mfdataset([hist_file, future_file], concat_dim='time')
 
-        if this_var == 'PRECC':  # need to add in large scale precip
+        if this_var == 'PRECC':  # need to add in large scale precip and snow
             hist_str2 = hist_str.replace(this_var, 'PRECL')
             future_str2 = future_str.replace(this_var, 'PRECL')
             hist_file2 = glob(hist_str2)[0]
             future_file2 = glob(future_str2)[0]
             ds2 = xr.open_mfdataset([hist_file2, future_file2], concat_dim='time')
+
+            hist_str3 = hist_str.replace(this_var, 'PRECSC')
+            future_str3 = future_str.replace(this_var, 'PRECSC')
+            hist_file3 = glob(hist_str3)[0]
+            future_file3 = glob(future_str3)[0]
+            ds3 = xr.open_mfdataset([hist_file3, future_file3], concat_dim='time')
+
+            hist_str4 = hist_str.replace(this_var, 'PRECSL')
+            future_str4 = future_str.replace(this_var, 'PRECSL')
+            hist_file4 = glob(hist_str4)[0]
+            future_file4 = glob(future_str4)[0]
+            ds4 = xr.open_mfdataset([hist_file4, future_file4], concat_dim='time')
+
             da = ds[this_var]
-            da = da.copy(data=(ds[this_var].values + ds2['PRECL'].values))
+            da = da.copy(data=(ds[this_var].values + ds2['PRECL'].values +
+                               ds3['PRECSC'].values + ds4['PRECSL'].values))
         else:
             da = ds[this_var]
 
