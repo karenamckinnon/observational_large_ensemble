@@ -597,25 +597,16 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
 
     """
 
-    # Get the forced component
+    # The forced component of both temperature and precipitation are estimated through regressing the local
+    # values onto the GM-EM temperature time series, which can be viewed as a proxy for radiative forcing.
+
+    # We assume that the forced component of SLP is zero.
     cvdp_loc = '/'.join(cvdp_file.split('/')[:-1])
-    # Assume that the global mean trend in sea level is zero
+    gm_em, gm_em_units, time, time_units = forced_trend('tas', cvdp_loc)
+
     if this_varname == 'slp':
-        gm_em, gm_em_units, time, time_units = forced_trend('tas', cvdp_loc)
         gm_em *= 0
         gm_em += 1  # will replace constant
-    else:
-        gm_em, gm_em_units, time, time_units = forced_trend(this_varname, cvdp_loc)
-
-    # If using precipitation, need number of days in month to convert units
-    if this_varname == 'pr':
-        gm_time = np.arange(1920 + 0.5/12, 1920 + 1/12*len(time), 1/12)
-        gm_year = np.floor(gm_time)
-        gm_month = np.ceil((gm_time - gm_year)*12)
-        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(gm_year, gm_month)]
-        assert gm_em_units == 'mm/day'  # double check
-        gm_em *= days_per_month
-        gm_em_units = 'mm'
 
     # Get dataframe of modes
     df = create_mode_df(cvdp_file, AMO_cutoff_freq)
