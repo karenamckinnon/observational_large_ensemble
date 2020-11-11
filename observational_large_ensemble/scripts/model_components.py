@@ -173,7 +173,10 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean
 
             if this_varname == 'pr':
-                data[data < 0] = 0  # precipitation can't be negative
+                # model was fit on log(precip), so translate back to original units
+                data = np.exp(data)
+                old_units = climate_noise.attrs['units']
+                climate_noise.attrs['units'] = old_units.split('log ')[-1]
 
             new_values = climate_noise.copy(data=data)
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +

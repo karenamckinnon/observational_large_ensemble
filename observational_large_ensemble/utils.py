@@ -707,6 +707,12 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         for counter, this_month in enumerate(X_month):
             X[counter, ...] += climo[this_month - 1, ...]
 
+    # model as log precip
+    if this_varname == 'pr':
+        X[X == 0] = 1e-8
+        X = np.log(X)
+        X_units = 'log mm'
+
     # Permute all data to be time, lat, lon
     lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
     lon_idx = np.where(np.isin(X.shape, len(lon)))[0][0]
