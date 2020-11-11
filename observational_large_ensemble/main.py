@@ -70,7 +70,7 @@ if __name__ == '__main__':
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
-            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
+            dsX, df_shifted, _ = olens_utils.get_obs(args.case, v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero
@@ -99,17 +99,8 @@ if __name__ == '__main__':
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
-            # Add the second filename for RCP8.5 to continue past 2005
-            second_f = f
-            second_f = second_f.replace('B20TRC5CNBDRD', 'BRCP85C5CNBDRD')
-            early_time = f.split('.')[-2]
-            if this_member < 34:
-                second_f = second_f.replace(early_time, '200601-208012')
-            else:
-                second_f = second_f.replace(early_time, '200601-210012')
-            f = [f, second_f]
-
-            dsX, df_shifted, _ = olens_utils.get_obs(v, f, valid_years, mode_lag,
+            # To allow for the concatenation of multiple model sims, pass the filename as a list
+            dsX, df_shifted, _ = olens_utils.get_obs(args.case, v, [f], valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero

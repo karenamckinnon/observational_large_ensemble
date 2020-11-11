@@ -566,11 +566,13 @@ def plot_sst_patterns(lat, lon, beta, ice_loc, modename, savename=None):
         plt.close()
 
 
-def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_cutoff_freq, name_conversion):
-    """Return observational data and associated time series of modes for a given variable.
+def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_cutoff_freq, name_conversion):
+    """Return observational or model data and associated time series of modes for a given variable.
 
     Parameters
     ----------
+    case : str
+        Data type. Currently "obs" or "LE-XXX"
     this_varname : str
         Standard variable name (tas, pr, or slp)
     this_filename : str
@@ -628,23 +630,23 @@ def get_obs(this_varname, this_filename, valid_years, mode_lag, cvdp_file, AMO_c
     df_shifted = df_shifted.assign(F=F)
 
     # Load dataset
-    if isinstance(this_filename, str):  # Observational data
+    if case == 'obs':  # Observational data
         ds = xr.open_dataset(this_filename)
-    else:  # CESM data
+    elif 'LE' in case:  # CESM data. Allows for multiple runs to be concatenated if desired.
         if this_varname == 'pr':  # CESM splits up precipitation into convective and large scale, liquid+ice vs snow
-            ds = xr.open_mfdataset(this_filename)
+            ds = xr.open_mfdataset(this_filename, combine='nested', concat_dim='time')
             this_filename2 = [f.replace('PRECC', 'PRECL') for f in this_filename]
-            ds2 = xr.open_mfdataset(this_filename2)
+            ds2 = xr.open_mfdataset(this_filename2, combine='nested', concat_dim='time')
             this_filename3 = [f.replace('PRECC', 'PRECSC') for f in this_filename]
-            ds3 = xr.open_mfdataset(this_filename3)
+            ds3 = xr.open_mfdataset(this_filename3, combine='nested', concat_dim='time')
             this_filename4 = [f.replace('PRECC', 'PRECSL') for f in this_filename]
-            ds4 = xr.open_mfdataset(this_filename4)
+            ds4 = xr.open_mfdataset(this_filename4, combine='nested', concat_dim='time')
             # CESM output saved with one day delay, so need to move back
             ds2 = ds2.assign_coords(time=ds2.time-timedelta(days=1))
             ds3 = ds3.assign_coords(time=ds3.time-timedelta(days=1))
             ds4 = ds4.assign_coords(time=ds4.time-timedelta(days=1))
         else:
-            ds = xr.open_mfdataset(this_filename)
+            ds = xr.open_mfdataset(this_filename, combine='nested', concat_dim='time')
 
         # CESM output saved with one day delay, so need to move back
         ds = ds.assign_coords(time=ds.time-timedelta(days=1))
