@@ -106,37 +106,29 @@ def forced_trend(varname, cvdp_loc):
         Units of the time variable
 
     """
-    if varname not in list(('tas', 'pr', 'slp')):
-        print('Variable %s not currently supported' % varname)
-        return
 
     if not cvdp_loc.endswith('/'):
         cvdp_loc = cvdp_loc + '/'
 
-    if varname == 'slp':
-        # Need to explicitly calculate GM, EM
-        print('Need to code this')
+    # Can use CVDP output
+    fnames = sorted(glob('%sCESM1-CAM5-BGC-LE_*.cvdp_data.1920-2017.nc' % cvdp_loc))
 
-    else:
-        # Can use CVDP output
-        fnames = sorted(glob('%sCESM1-CAM5-BGC-LE_*.cvdp_data.1920-2017.nc' % cvdp_loc))
+    cvdp_name = 'tas_global_avg_mon'
 
-        cvdp_name = '%s_global_avg_mon' % varname
+    nfiles = len(fnames)
+    ds = Dataset(fnames[0], 'r')
+    time = ds['time'][:]
+    time_units = ds['time'].units
+    gm_em_units = ds[cvdp_name].units
 
-        nfiles = len(fnames)
-        ds = Dataset(fnames[0], 'r')
-        time = ds['time'][:]
-        time_units = ds['time'].units
-        gm_em_units = ds[cvdp_name].units
+    n = len(time)
+    glob_mean = np.empty((nfiles, n))
+    for counter, file in enumerate(fnames):
+        ds = Dataset(file, 'r')
+        glob_mean[counter, :] = ds[cvdp_name][:]
 
-        n = len(time)
-        glob_mean = np.empty((nfiles, n))
-        for counter, file in enumerate(fnames):
-            ds = Dataset(file, 'r')
-            glob_mean[counter, :] = ds[cvdp_name][:]
-
-        # Take average across ensemble members
-        gm_em = np.mean(glob_mean, axis=0)
+    # Take average across ensemble members
+    gm_em = np.mean(glob_mean, axis=0)
 
     return gm_em, gm_em_units, time, time_units
 
