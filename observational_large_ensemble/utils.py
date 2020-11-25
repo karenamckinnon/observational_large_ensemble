@@ -342,12 +342,11 @@ def iaaft(x, fit_seasonal=False):
 
     # To account for some sampling variability, the seasonal cycle in ENSO variance is calculated
     # with resampling for each surrogate time series
-    # Have now removed this resampling
     if fit_seasonal:
         nyrs = int(np.floor(len(x)/12))
         resampled_x = x[:(nyrs*12)].reshape((nyrs, 12))
-        # idx = np.random.choice(np.arange(nyrs), nyrs, replace=True)
-        # resampled_x = resampled_x[idx, :]
+        idx = np.random.choice(np.arange(nyrs), nyrs, replace=True)
+        resampled_x = resampled_x[idx, :]
         seasonal_sigma = np.std(resampled_x, axis=0)
 
     xbar = np.mean(x)
