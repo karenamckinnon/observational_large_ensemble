@@ -49,6 +49,7 @@ if __name__ == '__main__':
     tas_dir = params.tas_dir
     pr_dir = params.pr_dir
     slp_dir = params.slp_dir
+    pr_transform = params.pr_transform
 
     varnames = ['tas', 'pr', 'slp']
     long_varnames = ['near surface air temperature', 'precipitation', 'sea level pressure']
@@ -103,7 +104,7 @@ if __name__ == '__main__':
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, [f], valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             if v == 'pr':  # perform transform to normalize data
-                daX = olens_utils.transform(daX, 'boxcox', workdir)
+                daX = olens_utils.transform(daX, pr_transform, workdir)
             mc.fit_linear_model(daX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
@@ -114,9 +115,9 @@ if __name__ == '__main__':
     # Get surrogate modes
     this_seed = 456
     ENSO_surr, PDO_orth_surr, AMO_surr, mode_months = mc.create_surrogate_modes(cvdp_file, AMO_cutoff_freq,
-                                                                                this_seed, n_members)
+                                                                                this_seed, n_members, valid_years)
 
     # Put it all together, and save to netcdf files
     mc.combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                            AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                           mode_lag, long_varnames, data_names)
+                           mode_lag, long_varnames, data_names, pr_transform)
