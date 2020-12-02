@@ -758,12 +758,12 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
         this_dir = '%s/%s' % (parameter_dir, this_varname)
         fname = '%s/residual.nc' % this_dir
 
-        ds = xr.open_dataset(fname)
-        _, nlat, nlon = np.shape(ds[this_varname])
+        da = xr.open_dataarray(fname)
+        _, nlat, nlon = np.shape(da)
 
-        has_data = ~np.isnan(ds[this_varname][-1, ...].values)
+        has_data = ~np.isnan(da[-1, ...].values)
 
-        datavec = ds[this_varname].values[:, has_data]
+        datavec = da.values[:, has_data]
 
         # We want to know the extent to which there is year-to-year memory (not seasonal)
         # Calculate block size for each month, gridbox
