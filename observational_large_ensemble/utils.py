@@ -914,3 +914,45 @@ def transform(da, transform_type, workdir):
         raise NotImplementedError('No other transforms besides Box-Cox and log')
 
     return da_t
+
+
+def retransform(da_t, transform_type, workdir):
+    """Perform inverse transform to return to original units.
+
+    Parameters
+    ----------
+    da_t : xarray.DataArray
+        Transformed dataarray
+    transform_type : str
+        'boxcox' or 'log'
+    workdir : str
+        Where to look for the boxcox parameters
+
+    Returns
+    -------
+    da_rt : xarray.DataArray
+        DataArray in original units/scale
+
+    """
+
+    if transform_type == 'boxcox':
+        # Load lambdas calculated for the forward transform
+        lam_save_name = '%s/boxcox_lambda.nc' % workdir
+        da_lam = xr.open_dataarray(lam_save_name)
+
+        da_rt = []
+        for mo in range(1, 13):
+            x_rt = boxcox_forward(da_t.sel({'time': da_t['time.month'] == mo}),
+                                  da_lam.sel({'month': mo}))
+            da_rt.append(x_rt)
+        da_rt = xr.concat(da_rt, dim='time')
+        da_rt = da_rt.sortby('time')
+
+    elif transform_type == 'log':
+        da_rt = np.exp(da_t)
+    else:
+        raise NotImplementedError('No other transforms besides Box-Cox and log')
+
+    da_rt = da_rt.fillna(0)
+
+    return da_rt
