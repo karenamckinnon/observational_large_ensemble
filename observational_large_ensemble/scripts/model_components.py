@@ -6,13 +6,13 @@ from subprocess import check_call
 import pandas as pd
 
 
-def fit_linear_model(dsX, df, this_varname, workdir):
+def fit_linear_model(da, df, this_varname, workdir):
     """Save linear regression model parameters.
 
     Parameters
     ----------
-    dsX : xarray.Dataset
-        Dataset containing climate variable of interest
+    da : xarray.DataArray
+        DataArray containing climate variable of interest
     df : pandas.dataframe
         Mode and forced time series
     this_varname : str
@@ -32,8 +32,7 @@ def fit_linear_model(dsX, df, this_varname, workdir):
     # Add constant
     df = df.assign(constant=np.ones(len(df)))
 
-    da = dsX[this_varname]
-    attrs = dsX.attrs
+    attrs = da.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
 
