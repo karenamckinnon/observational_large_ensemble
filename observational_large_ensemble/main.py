@@ -102,6 +102,8 @@ if __name__ == '__main__':
             # To allow for the concatenation of multiple model sims, pass the filename as a list
             dsX, df_shifted, _ = olens_utils.get_obs(args.case, v, [f], valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
+            if v == 'pr':  # perform transform to normalize data
+                dsX = olens_utils.transform(dsX, 'boxcox', workdir)
             mc.fit_linear_model(dsX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
