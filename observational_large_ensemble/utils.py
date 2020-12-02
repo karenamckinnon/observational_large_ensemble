@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
 from datetime import timedelta
+from scipy.stats import boxcox
 
 
 def lowpass_butter(fs, lowcut, order,  data, axis=-1):
@@ -868,7 +869,6 @@ def transform(da, transform_type, workdir):
         Transformed dataarray
 
     """
-    from scipy.stats import boxcox
 
     # Set all non-positive precip values to trace
     tmp = da.values
