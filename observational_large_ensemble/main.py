@@ -7,13 +7,14 @@ from subprocess import check_call
 from glob import glob
 
 
-def setup(varname, filename, AMO_cutoff_freq, mode_lag, workdir_base):
+def setup(varname, filename, AMO_cutoff_freq, mode_lag, pr_transform, workdir_base):
 
     # Create dictionary of parameters to save in working directory
     param_dict = {'varname': varname,
                   'filename': filename,
                   'AMO_cutoff_freq': AMO_cutoff_freq,
-                  'mode_lag': mode_lag}
+                  'mode_lag': mode_lag,
+                  'pr_transform': pr_transform}
 
     # Output folder, named with current date
     now = datetime.strftime(datetime.now(), '%Y%m%d')
@@ -67,7 +68,7 @@ if __name__ == '__main__':
         surr_prefix = 'HadISST_surrogate_mode_time_series_020'
 
         # Save parameter files
-        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, workdir_base)
+        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, pr_transform, workdir_base)
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
@@ -96,7 +97,7 @@ if __name__ == '__main__':
         data_names = ['CESM1-LE', 'CESM1-LE', 'CESM1-LE']
 
         # Save parameter files
-        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, workdir_base)
+        workdir = setup(varnames, filenames, AMO_cutoff_freq, mode_lag, pr_transform, workdir_base)
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
