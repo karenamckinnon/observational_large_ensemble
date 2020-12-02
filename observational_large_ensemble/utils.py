@@ -11,7 +11,6 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
-import calendar
 from datetime import timedelta
 
 
@@ -681,11 +680,8 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         X -= 273.15
         X_units = 'deg C'
     elif X_units == 'm/s':
-        # convert to mm (total over month)
-        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
-        seconds_per_month = 60*60*24*np.array(days_per_month)
-        X *= seconds_per_month[:, np.newaxis, np.newaxis]  # m per month
-        X *= 1000  # mm per month
+        # convert to mm / day
+        X *= 1000*24*60*60  # mm per day
         X_units = 'mm'
 
     # Check unit consistency
