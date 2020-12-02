@@ -696,12 +696,6 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         for counter, this_month in enumerate(X_month):
             X[counter, ...] += climo[this_month - 1, ...]
 
-    # model as log precip
-    if this_varname == 'pr':
-        X[X == 0] = 1e-8
-        X = np.log(X)
-        X_units = 'log mm'
-
     # Permute all data to be time, lat, lon
     lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
     lon_idx = np.where(np.isin(X.shape, len(lon)))[0][0]
@@ -723,16 +717,17 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
     # Check that all dimensions look consistent
     assert len(df_shifted) == np.shape(X)[0]
 
-    # Put into dataset
+    # Put into dataarray
     time = pd.date_range(start='%04d-%02d' % (X_year[0], X_month[0]),
                          freq='M', periods=len(X_year))
-    dsX = xr.Dataset(data_vars={this_varname: (('time', 'lat', 'lon'), X)},
-                     coords={'time': time,
-                             'lat': lat,
-                             'lon': lon},
-                     attrs={'units': X_units})
+    daX = xr.DataArray(data=X,
+                       dims=('time', 'lat', 'lon'),
+                       coords={'time': time,
+                               'lat': lat,
+                               'lon': lon},
+                       attrs={'units': X_units})
 
-    return dsX, df_shifted, df
+    return daX, df_shifted, df
 
 
 def choose_block(parameter_dir, varnames, percentile_threshold=97):
