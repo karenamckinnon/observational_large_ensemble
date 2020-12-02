@@ -78,7 +78,7 @@ if __name__ == '__main__':
 
     elif 'LE' in args.case:
         name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
-        cesm_names = list(name_conversion.values())
+        cesm_names = [name_conversion[v] for v in varnames]
         surr_prefix = 'CESM1-CAM5-BGC-LE_#1_surrogate_mode_time_series_020'
         this_member = int((args.case).split('-')[-1])
         cvdp_file = '%s/CESM1-CAM5-BGC-LE_#%i.cvdp_data.1920-2017.nc' % (cvdp_loc, this_member)

@@ -173,7 +173,10 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean
 
             if this_varname == 'pr':
-                data[data < 0] = 0  # precipitation can't be negative
+                # model was fit on log(precip), so translate back to original units
+                data = np.exp(data)
+                old_units = climate_noise.attrs['units']
+                climate_noise.attrs['units'] = old_units.split('log ')[-1]
 
             new_values = climate_noise.copy(data=data)
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
@@ -184,7 +187,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             new_values.to_netcdf(filename)
 
 
-def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members):
+def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members, valid_years):
     """Create random mode sets.
 
     Parameters
@@ -197,6 +200,8 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members)
         Random seed for reproducibility
     n_ens_members : int
         Number of mode sets to create
+    valid_years : numpy.ndarray
+        Array of years used to build the model
 
     Returns
     -------
@@ -212,6 +217,9 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members)
 
     # Load original versions
     df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
+    # Subset to valid years
+    subset = np.isin(df['year'].values, valid_years)
+    df = df.loc[subset, :]
     ntime = len(df)
     months = df['month'].values
 
