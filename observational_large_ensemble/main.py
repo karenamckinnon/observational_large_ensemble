@@ -107,13 +107,18 @@ if __name__ == '__main__':
         # Get data and modes
         for v, f in zip(varnames, filenames):
             print(v)
+            # create directory for saving some params
+            var_dir = '%s/%s' % (workdir, v)
+            cmd = 'mkdir -p %s' % var_dir
+            check_call(cmd.split())
+
             print('getting data')
             # To allow for the concatenation of multiple model sims, pass the filename as a list
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, [f], valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             if v == 'pr':  # perform transform to normalize data
                 print('normalizing precip')
-                daX = olens_utils.transform(daX, pr_transform, '%s/%s' % (workdir, v))
+                daX = olens_utils.transform(daX, pr_transform, var_dir)
             print('fitting model')
             mc.fit_linear_model(daX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero

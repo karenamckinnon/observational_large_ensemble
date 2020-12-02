@@ -75,8 +75,6 @@ def fit_linear_model(da, df, this_varname, workdir):
 
     # Save to netcdf
     var_dir = '%s/%s' % (workdir, this_varname)
-    if not os.path.isdir(var_dir):
-        os.mkdir(var_dir)
 
     ds_beta.to_netcdf('%s/beta.nc' % var_dir)
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
