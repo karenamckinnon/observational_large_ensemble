@@ -170,7 +170,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             new_values = climate_noise.copy(data=data)
             if this_varname == 'pr':
                 # model was fit on transformed precip, so translate back to original units
-                new_values = olens_utils.retransform(new_values, pr_transform, workdir)
+                new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (workdir, this_varname))
 
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[var_ct]) +

@@ -105,7 +105,7 @@ if __name__ == '__main__':
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, [f], valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             if v == 'pr':  # perform transform to normalize data
-                daX = olens_utils.transform(daX, pr_transform, workdir)
+                daX = olens_utils.transform(daX, pr_transform, '%s/%s' % (workdir, v))
             mc.fit_linear_model(daX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
