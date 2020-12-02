@@ -86,7 +86,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
                         mode_lag, long_varnames, data_names, pr_transform):
 
-    for var_ct, this_varname in enumerate(varnames):
+    for this_varname in varnames:
 
         if not os.path.isdir('%s/%s' % (output_dir, this_varname)):
             cmd = 'mkdir -p %s/%s' % (output_dir, this_varname)
@@ -173,8 +173,8 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (workdir, this_varname))
 
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
-                           'for %s. ' % (long_varnames[var_ct]) +
-                           'Data is from %s.' % data_names[var_ct])
+                           'for %s. ' % (long_varnames[this_varname]) +
+                           'Data is from %s.' % data_names[this_varname])
             new_values.attrs['description'] = description
             filename = '%s/%s/%s_member%04d.nc' % (output_dir, this_varname, this_varname, kk + 1)
             new_values.to_netcdf(filename)
