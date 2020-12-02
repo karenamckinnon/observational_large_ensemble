@@ -806,3 +806,111 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
     block_use_mo = block_use*12  # switch to months
 
     return block_use, block_use_mo
+
+
+def boxcox_forward(x, lam):
+    """Transform data x using the Box-Cox transform and the prescribed lambda.
+
+    Parameters
+    ----------
+    x : xarray.DataArray
+        Contains untransformed data (must be positive), with standard dimensions time x lat x lon
+    lam : xarray.DataArray
+        Selected lambda values for the Box-Cox transform, with standard dimensions lat x lon
+
+    Returns
+    -------
+    Transformed data
+    """
+
+    return (x**lam - 1)/lam
+
+
+def boxcox_reverse(x_t, lam):
+    """Perform the inverse Box-Cox transform to return to original units.
+
+    Parameters
+    ----------
+    x_t : xarray.DataArray
+        Contains transformed data, with standard dimensions time x lat x lon
+    lam : xarray.DataArray
+        Selected lambda values for the Box-Cox transform, with standard dimensions lat x lon
+
+    Returns
+    -------
+    orig_scale : xarray.DataArray
+        Data in the original scale, of same dimension as x_t
+    """
+
+    orig_scale = (lam*x_t + 1)**(1/lam)
+    orig_scale = (orig_scale.fillna(0)).transpose('time', 'lat', 'lon')
+
+    return orig_scale
+
+
+def transform(da, transform_type, workdir):
+    """Transform data to be more normal using either boxcox or log transform.
+
+    The transform is performed separately for each month, since the regression model is fit for each month.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Untransformed dataarray
+    transform_type : str
+        'boxcox' or 'log'
+    workdir : str
+        Where to save the boxcox parameters
+
+    Returns
+    -------
+    ds_t : xarray.DatArray
+        Transformed dataarray
+
+    """
+    from scipy.stats import boxcox
+
+    # Set all non-positive precip values to trace
+    tmp = da.values
+    tmp[tmp <= 0] = 1e-24
+    da.values = tmp
+
+    if transform_type == 'boxcox':
+        lam_save_name = '%s/boxcox_lambda.nc' % workdir
+        if os.path.isfile(lam_save_name):
+            da_lam = xr.open_dataarray(lam_save_name)
+        else:
+            ntime, nlat, nlon = da.shape
+            box_lam = np.empty((12, nlat, nlon))
+            for mo in range(1, 13):
+
+                for ct1 in range(nlat):
+                    for ct2 in range(nlon):
+                        this_ts = da.isel({'time': da['time.month'] == mo,
+                                           'lat': ct1, 'lon': ct2})
+                        _, lam = boxcox(this_ts)
+                        box_lam[mo-1, ct1, ct2] = lam
+
+            # save to netcdf
+            da_lam = xr.DataArray(data=box_lam,
+                                  dims=('month', 'lat', 'lon'),
+                                  coords={'month': np.arange(1, 13),
+                                          'lat': da.lat,
+                                          'lon': da.lon})
+            da_lam.to_netcdf(lam_save_name)
+
+        # transform data, separately for each month
+        da_t = []
+        for mo in range(1, 13):
+            x_t = boxcox_forward(da.sel({'time': da['time.month'] == mo}),
+                                 da_lam.sel({'month': mo}))
+            da_t.append(x_t)
+        da_t = xr.concat(da_t, dim='time')
+        da_t = da_t.sortby('time')
+
+    elif transform_type == 'log':
+        da_t = np.log(da)
+    else:
+        raise NotImplementedError('No other transforms besides Box-Cox and log')
+
+    return da_t
