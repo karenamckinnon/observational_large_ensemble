@@ -883,7 +883,7 @@ def transform(da, transform_type, workdir):
             ntime, nlat, nlon = da.shape
             box_lam = np.empty((12, nlat, nlon))
             for mo in range(1, 13):
-
+                print('calculating lambda for month %i' % mo)
                 for ct1 in range(nlat):
                     for ct2 in range(nlon):
                         this_ts = da.isel({'time': da['time.month'] == mo,
@@ -942,7 +942,7 @@ def retransform(da_t, transform_type, workdir):
 
         da_rt = []
         for mo in range(1, 13):
-            x_rt = boxcox_forward(da_t.sel({'time': da_t['time.month'] == mo}),
+            x_rt = boxcox_reverse(da_t.sel({'time': da_t['time.month'] == mo}),
                                   da_lam.sel({'month': mo}))
             da_rt.append(x_rt)
         da_rt = xr.concat(da_rt, dim='time')
