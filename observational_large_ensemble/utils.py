@@ -889,7 +889,7 @@ def transform(da, transform_type, workdir):
                         this_ts = da.isel({'time': da['time.month'] == mo,
                                            'lat': ct1, 'lon': ct2})
                         _, lam = boxcox(this_ts)
-                        box_lam[mo-1, ct1, ct2] = lam
+                        box_lam[mo-1, ct1, ct2] = np.min((lam, 1))  # set ceiling at 1, since pr is positively skewed
 
             # save to netcdf
             da_lam = xr.DataArray(data=box_lam,
