@@ -175,6 +175,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                            'Data is from %s.' % data_names[this_varname])
             new_values.attrs['description'] = description
             filename = '%s/%s/%s_member%04d.nc' % (output_dir, this_varname, this_varname, kk + 1)
+            new_values = new_values.rename(this_varname)
             new_values.to_netcdf(filename)
 
 
