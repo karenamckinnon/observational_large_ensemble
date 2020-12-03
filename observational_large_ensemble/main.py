@@ -17,8 +17,8 @@ def setup(varname, filename, AMO_cutoff_freq, mode_lag, pr_transform, workdir_ba
                   'pr_transform': pr_transform}
 
     # Output folder, named with current date
-    now = datetime.strftime(datetime.now(), '%Y%m%d')
-    workdir = '%s/%s' % (workdir_base, now)
+    # now = datetime.strftime(datetime.now(), '%Y%m%d')
+    workdir = '%s' % (workdir_base)
     if not os.path.isdir(workdir):
         cmd = 'mkdir -p %s' % workdir
         check_call(cmd.split())
