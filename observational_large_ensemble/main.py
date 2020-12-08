@@ -52,7 +52,7 @@ if __name__ == '__main__':
     slp_dir = params.slp_dir
     pr_transform = params.pr_transform
 
-    varnames = ['pr']
+    varnames = ['pr', 'tas', 'slp']
     long_varnames = {'tas': 'near surface air temperature',
                      'pr': 'precipitation',
                      'slp': 'sea level pressure'}
