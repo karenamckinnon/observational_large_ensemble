@@ -11,8 +11,8 @@ import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.feature as cfeature
 import cartopy.crs as ccrs
-import calendar
 from datetime import timedelta
+from scipy.stats import boxcox
 
 
 def lowpass_butter(fs, lowcut, order,  data, axis=-1):
@@ -681,11 +681,8 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         X -= 273.15
         X_units = 'deg C'
     elif X_units == 'm/s':
-        # convert to mm (total over month)
-        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
-        seconds_per_month = 60*60*24*np.array(days_per_month)
-        X *= seconds_per_month[:, np.newaxis, np.newaxis]  # m per month
-        X *= 1000  # mm per month
+        # convert to mm / day
+        X *= 1000*24*60*60  # mm per day
         X_units = 'mm'
 
     # Check unit consistency
@@ -699,12 +696,6 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         # Add climatology to X
         for counter, this_month in enumerate(X_month):
             X[counter, ...] += climo[this_month - 1, ...]
-
-    # model as log precip
-    if this_varname == 'pr':
-        X[X == 0] = 1e-8
-        X = np.log(X)
-        X_units = 'log mm'
 
     # Permute all data to be time, lat, lon
     lat_idx = np.where(np.isin(X.shape, len(lat)))[0][0]
@@ -727,16 +718,17 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
     # Check that all dimensions look consistent
     assert len(df_shifted) == np.shape(X)[0]
 
-    # Put into dataset
+    # Put into dataarray
     time = pd.date_range(start='%04d-%02d' % (X_year[0], X_month[0]),
                          freq='M', periods=len(X_year))
-    dsX = xr.Dataset(data_vars={this_varname: (('time', 'lat', 'lon'), X)},
-                     coords={'time': time,
-                             'lat': lat,
-                             'lon': lon},
-                     attrs={'units': X_units})
+    daX = xr.DataArray(data=X,
+                       dims=('time', 'lat', 'lon'),
+                       coords={'time': time,
+                               'lat': lat,
+                               'lon': lon},
+                       attrs={'units': X_units})
 
-    return dsX, df_shifted, df
+    return daX, df_shifted, df
 
 
 def choose_block(parameter_dir, varnames, percentile_threshold=97):
@@ -767,12 +759,12 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
         this_dir = '%s/%s' % (parameter_dir, this_varname)
         fname = '%s/residual.nc' % this_dir
 
-        ds = xr.open_dataset(fname)
-        _, nlat, nlon = np.shape(ds[this_varname])
+        da = xr.open_dataarray(fname)
+        _, nlat, nlon = np.shape(da)
 
-        has_data = ~np.isnan(ds[this_varname][-1, ...].values)
+        has_data = ~np.isnan(da[-1, ...].values)
 
-        datavec = ds[this_varname].values[:, has_data]
+        datavec = da.values[:, has_data]
 
         # We want to know the extent to which there is year-to-year memory (not seasonal)
         # Calculate block size for each month, gridbox
@@ -815,3 +807,152 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
     block_use_mo = block_use*12  # switch to months
 
     return block_use, block_use_mo
+
+
+def boxcox_forward(x, lam):
+    """Transform data x using the Box-Cox transform and the prescribed lambda.
+
+    Parameters
+    ----------
+    x : xarray.DataArray
+        Contains untransformed data (must be positive), with standard dimensions time x lat x lon
+    lam : xarray.DataArray
+        Selected lambda values for the Box-Cox transform, with standard dimensions lat x lon
+
+    Returns
+    -------
+    Transformed data
+    """
+
+    return (x**lam - 1)/lam
+
+
+def boxcox_reverse(x_t, lam):
+    """Perform the inverse Box-Cox transform to return to original units.
+
+    Parameters
+    ----------
+    x_t : xarray.DataArray
+        Contains transformed data, with standard dimensions time x lat x lon
+    lam : xarray.DataArray
+        Selected lambda values for the Box-Cox transform, with standard dimensions lat x lon
+
+    Returns
+    -------
+    orig_scale : xarray.DataArray
+        Data in the original scale, of same dimension as x_t
+    """
+
+    orig_scale = (lam*x_t + 1)**(1/lam)
+    orig_scale = (orig_scale.fillna(0)).transpose('time', 'lat', 'lon')
+
+    return orig_scale
+
+
+def transform(da, transform_type, workdir):
+    """Transform data to be more normal using either boxcox or log transform.
+
+    The transform is performed separately for each month, since the regression model is fit for each month.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Untransformed dataarray
+    transform_type : str
+        'boxcox' or 'log'
+    workdir : str
+        Where to save the boxcox parameters
+
+    Returns
+    -------
+    ds_t : xarray.DatArray
+        Transformed dataarray
+
+    """
+
+    # Set all non-positive precip values to trace
+    tmp = da.values
+    tmp[tmp <= 0] = 1e-24
+    da.values = tmp
+
+    if transform_type == 'boxcox':
+        lam_save_name = '%s/boxcox_lambda.nc' % workdir
+        if os.path.isfile(lam_save_name):
+            da_lam = xr.open_dataarray(lam_save_name)
+        else:
+            ntime, nlat, nlon = da.shape
+            box_lam = np.empty((12, nlat, nlon))
+            for mo in range(1, 13):
+                print('calculating lambda for month %i' % mo)
+                for ct1 in range(nlat):
+                    for ct2 in range(nlon):
+                        this_ts = da.isel({'time': da['time.month'] == mo,
+                                           'lat': ct1, 'lon': ct2})
+                        _, lam = boxcox(this_ts)
+                        box_lam[mo-1, ct1, ct2] = np.min((lam, 1))  # set ceiling at 1, since pr is positively skewed
+
+            # save to netcdf
+            da_lam = xr.DataArray(data=box_lam,
+                                  dims=('month', 'lat', 'lon'),
+                                  coords={'month': np.arange(1, 13),
+                                          'lat': da.lat,
+                                          'lon': da.lon})
+            da_lam.to_netcdf(lam_save_name)
+
+        # transform data, separately for each month
+        da_t = []
+        for mo in range(1, 13):
+            x_t = boxcox_forward(da.sel({'time': da['time.month'] == mo}),
+                                 da_lam.sel({'month': mo}))
+            da_t.append(x_t)
+        da_t = xr.concat(da_t, dim='time')
+        da_t = da_t.sortby('time')
+
+    elif transform_type == 'log':
+        da_t = np.log(da)
+    else:
+        raise NotImplementedError('No other transforms besides Box-Cox and log')
+
+    return da_t
+
+
+def retransform(da_t, transform_type, workdir):
+    """Perform inverse transform to return to original units.
+
+    Parameters
+    ----------
+    da_t : xarray.DataArray
+        Transformed dataarray
+    transform_type : str
+        'boxcox' or 'log'
+    workdir : str
+        Where to look for the boxcox parameters
+
+    Returns
+    -------
+    da_rt : xarray.DataArray
+        DataArray in original units/scale
+
+    """
+
+    if transform_type == 'boxcox':
+        # Load lambdas calculated for the forward transform
+        lam_save_name = '%s/boxcox_lambda.nc' % workdir
+        da_lam = xr.open_dataarray(lam_save_name)
+
+        da_rt = []
+        for mo in range(1, 13):
+            x_rt = boxcox_reverse(da_t.sel({'time': da_t['time.month'] == mo}),
+                                  da_lam.sel({'month': mo}))
+            da_rt.append(x_rt)
+        da_rt = xr.concat(da_rt, dim='time')
+        da_rt = da_rt.sortby('time')
+
+    elif transform_type == 'log':
+        da_rt = np.exp(da_t)
+    else:
+        raise NotImplementedError('No other transforms besides Box-Cox and log')
+
+    da_rt = da_rt.fillna(0)
+
+    return da_rt

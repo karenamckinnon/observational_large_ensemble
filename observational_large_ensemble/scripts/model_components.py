@@ -6,13 +6,13 @@ from subprocess import check_call
 import pandas as pd
 
 
-def fit_linear_model(dsX, df, this_varname, workdir):
+def fit_linear_model(da, df, this_varname, workdir):
     """Save linear regression model parameters.
 
     Parameters
     ----------
-    dsX : xarray.Dataset
-        Dataset containing climate variable of interest
+    da : xarray.DataArray
+        DataArray containing climate variable of interest
     df : pandas.dataframe
         Mode and forced time series
     this_varname : str
@@ -32,8 +32,7 @@ def fit_linear_model(dsX, df, this_varname, workdir):
     # Add constant
     df = df.assign(constant=np.ones(len(df)))
 
-    da = dsX[this_varname]
-    attrs = dsX.attrs
+    attrs = da.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
 
@@ -76,8 +75,6 @@ def fit_linear_model(dsX, df, this_varname, workdir):
 
     # Save to netcdf
     var_dir = '%s/%s' % (workdir, this_varname)
-    if not os.path.isdir(var_dir):
-        os.mkdir(var_dir)
 
     ds_beta.to_netcdf('%s/beta.nc' % var_dir)
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
@@ -85,9 +82,9 @@ def fit_linear_model(dsX, df, this_varname, workdir):
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                        mode_lag, long_varnames, data_names):
+                        mode_lag, long_varnames, data_names, pr_transform):
 
-    for var_ct, this_varname in enumerate(varnames):
+    for this_varname in varnames:
 
         if not os.path.isdir('%s/%s' % (output_dir, this_varname)):
             cmd = 'mkdir -p %s/%s' % (output_dir, this_varname)
@@ -97,32 +94,28 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
         np.random.seed(123)
         this_dir = '%s/%s' % (workdir, this_varname)
         fname_epsilon = '%s/residual.nc' % this_dir
-        ds = xr.open_dataset(fname_epsilon)
-        ntime, nlat, nlon = np.shape(ds[this_varname])
+        da = xr.open_dataarray(fname_epsilon)
+        ntime, nlat, nlon = np.shape(da)
 
         fname_beta = '%s/beta.nc' % this_dir
         ds_beta = xr.open_dataset(fname_beta)
 
-        # Keeping three year blocks together, perform block bootstrap
-        nblocks = int(np.floor(ntime/block_use_mo))
+        # Keeping blocks together, perform block bootstrap
+        nblocks = int(np.ceil(ntime/block_use_mo))
 
         for kk in range(n_members):
             # Choose the starting points of the blocks
             # Blocks must always start with the same month, so as not to swap monthly sensitivities
-            potential_starts = np.arange(ntime - block_use_mo)[::12]
+            potential_starts = np.arange(ntime)[::12]
             these_starts = np.random.choice(potential_starts, nblocks, replace=True)
 
-            # Figure out when we'll need to add additional points
-            leftovers = ntime - nblocks*block_use_mo
-
             new_idx = np.array([np.arange(s, s + block_use_mo) for s in these_starts]).flatten().astype(int)
-            if leftovers > 0:
-                start_idx = np.random.choice(potential_starts, 1, replace=True)
-                new_idx = np.hstack((new_idx, np.arange(start_idx, start_idx + leftovers))).astype(int)
+            new_idx = new_idx % ntime  # circular bootstrap
+            new_idx = new_idx[:ntime]  # since we used ceiling, need to cutoff the end
 
             # Resampled residual = new climate noise
-            climate_noise = ds[this_varname][new_idx, ...]
-            climate_noise = climate_noise.assign_coords(time=ds.time)
+            climate_noise = da[new_idx, ...]
+            climate_noise = climate_noise.assign_coords(time=da.time)
 
             # Pull out a climate mode surrogate time series
             AMO_ts = AMO_surr[:, kk]
@@ -172,18 +165,17 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             else:
                 data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean
 
-            if this_varname == 'pr':
-                # model was fit on log(precip), so translate back to original units
-                data = np.exp(data)
-                old_units = climate_noise.attrs['units']
-                climate_noise.attrs['units'] = old_units.split('log ')[-1]
-
             new_values = climate_noise.copy(data=data)
+            if this_varname == 'pr':
+                # model was fit on transformed precip, so translate back to original units
+                new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (workdir, this_varname))
+
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
-                           'for %s. ' % (long_varnames[var_ct]) +
-                           'Data is from %s.' % data_names[var_ct])
+                           'for %s. ' % (long_varnames[this_varname]) +
+                           'Data is from %s.' % data_names[this_varname])
             new_values.attrs['description'] = description
             filename = '%s/%s/%s_member%04d.nc' % (output_dir, this_varname, this_varname, kk + 1)
+            new_values = new_values.rename(this_varname)
             new_values.to_netcdf(filename)
 
 
