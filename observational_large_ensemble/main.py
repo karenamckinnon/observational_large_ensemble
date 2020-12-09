@@ -61,12 +61,16 @@ if __name__ == '__main__':
     output_dir = '%s/%s' % (output_dir, args.case)
 
     if args.case == 'obs':
-        # FIXME, change filenames and datanames to dict, keyed with varname
         cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
-        filenames = ['%s/Complete_TAVG_LatLong1.nc' % tas_dir,
-                     '%s/precip.mon.total.1x1.v2018.nc' % pr_dir,
-                     '%s/prmsl.mon.mean.nc' % slp_dir]
-        data_names = [f.split('/')[-2] for f in filenames]
+        file_dict = {'tas': '%s/Complete_TAVG_LatLong1.nc' % tas_dir,
+                     'pr': '%s/precip.mon.total.1x1.v2018.nc' % pr_dir,
+                     'slp': '%s/prmsl.mon.mean.nc' % slp_dir}
+
+        filenames = []
+        for var in varnames:
+            filenames.append(file_dict[var])
+
+        data_names = {'tas': 'BEST', 'pr': 'GPCC', 'slp': '20CRv2c'}
         name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
         surr_prefix = 'HadISST_surrogate_mode_time_series_020'
 
@@ -75,8 +79,16 @@ if __name__ == '__main__':
 
         # Get data and modes
         for v, f in zip(varnames, filenames):
+            print(v)
+            # create directory for saving some params
+            var_dir = '%s/%s' % (workdir, v)
+            cmd = 'mkdir -p %s' % var_dir
+            check_call(cmd.split())
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
+            if v == 'pr':  # perform transform to normalize data
+                print('normalizing precip')
+                daX = olens_utils.transform(daX, pr_transform, var_dir)
             mc.fit_linear_model(daX, df_shifted, v, workdir)
             if v != 'slp':  # forced component for SLP assumed to be zero
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)

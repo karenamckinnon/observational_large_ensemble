@@ -130,7 +130,8 @@ for m in members:
 
     # change to mm /day
     da_cesm *= 1000*24*60*60
-
+    # need to load to speed up compute
+    da_cesm = da_cesm.load()
     LFP_save = np.empty((nlat*nlon, n_lfc_save, 12))
     LFC_save = np.empty((nyrs, n_lfc_save, 12))
     for month in range(1, 13):
@@ -166,5 +167,5 @@ LFPs = xr.concat(all_LFP, dim='member')
 LFCs = xr.concat(all_LFC, dim='member')
 
 # save
-LFPs.to_netcdf('%s/LFPs_CESM1-LE.nc' % procdir)
-LFCs.to_netcdf('%s/LFCs_CESM1-LE.nc' % procdir)
+LFPs.to_netcdf('%s/LFPs_precip_CESM1-LE.nc' % procdir)
+LFCs.to_netcdf('%s/LFCs_precip_CESM1-LE.nc' % procdir)

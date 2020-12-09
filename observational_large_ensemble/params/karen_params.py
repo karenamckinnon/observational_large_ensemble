@@ -3,6 +3,7 @@
 import numpy as np
 
 valid_years = np.arange(1921, 2006)  # skip first year of CESM1-LE, and don't combine with future scenario
+valid_years = np.arange(1921, 2016)  # for obs
 cvdp_loc = '/glade/work/mckinnon/CVDP'
 AMO_cutoff_freq = 1/20  # Cut off frequency for Butterworth filter of AMO (1/years)
 mode_lag = 0  # number of months to lag between mode time series and climate response
