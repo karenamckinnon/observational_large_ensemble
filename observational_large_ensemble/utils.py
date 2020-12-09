@@ -43,8 +43,8 @@ def lowpass_butter(fs, L, order,  data, axis=-1, btype='low'):
 
     nyq = 0.5 * fs  # Nyquist frequency
     low = L / nyq
-    b, a = butter(order, low, btype=btype, output='sos')  # Coefficients for Butterworth filter
-    filtered = sosfiltfilt(b, a, data, axis=axis)
+    sos = butter(order, low, btype=btype, output='sos')  # Coefficients for Butterworth filter
+    filtered = sosfiltfilt(sos, data, axis=axis)
 
     return filtered
 
