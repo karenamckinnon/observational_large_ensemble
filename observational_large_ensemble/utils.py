@@ -15,14 +15,14 @@ from datetime import timedelta
 from scipy.stats import boxcox
 
 
-def lowpass_butter(fs, lowcut, order,  data, axis=-1):
+def lowpass_butter(fs, L, order,  data, axis=-1, btype='low'):
     """Perform a lowpass butterworth filter on data using a forward and backward digital filter.
 
     Parameters
     ----------
     fs : float
         Sampling frequency of data (example: 12 for monthly data)
-    lowcut : float
+    L : float
         Critical frequency for Butterworth filter. See scipy docs.
     order : int
         Order of filter. Note that filtfilt doubles the original filter order.
@@ -30,6 +30,8 @@ def lowpass_butter(fs, lowcut, order,  data, axis=-1):
         1D vector or 2D array to be filtered
     axis : int
         Axis along which filtering is performed.
+    btype : str
+        'high' or 'low' pass filter
 
     Returns
     -------
@@ -37,12 +39,12 @@ def lowpass_butter(fs, lowcut, order,  data, axis=-1):
         Filtered data
 
     """
-    from scipy.signal import butter, filtfilt
+    from scipy.signal import butter, sosfiltfilt
 
     nyq = 0.5 * fs  # Nyquist frequency
-    low = lowcut / nyq
-    b, a = butter(order, low, btype='low')  # Coefficients for Butterworth filter
-    filtered = filtfilt(b, a, data, axis=axis)
+    low = L / nyq
+    b, a = butter(order, low, btype=btype, output='sos')  # Coefficients for Butterworth filter
+    filtered = sosfiltfilt(b, a, data, axis=axis)
 
     return filtered
 
