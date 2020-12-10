@@ -13,6 +13,7 @@ import cartopy.feature as cfeature
 import cartopy.crs as ccrs
 from datetime import timedelta
 from scipy.stats import boxcox
+import calendar
 
 
 def lowpass_butter(fs, L, order,  data, axis=-1, btype='low'):
@@ -685,13 +686,17 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
     elif X_units == 'm/s':
         # convert to mm / day
         X *= 1000*24*60*60  # mm per day
-        X_units = 'mm'
+        X_units = 'mm/day'
+    elif X_units == 'mm':  # GPCC, mm total over month
+        days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
+        X /= np.array(days_per_month)
+        X_units = 'mm/day'
 
     # Check unit consistency
     if this_varname == 'slp':
         assert X_units == 'Pa'
     if this_varname == 'pr':
-        assert X_units == 'mm'
+        assert X_units == 'mm/day'
 
     if 'climatology' in ds.variables:
         climo = ds['climatology'].values
