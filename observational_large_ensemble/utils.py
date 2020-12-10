@@ -888,13 +888,16 @@ def transform(da, transform_type, workdir):
             da_lam = xr.open_dataarray(lam_save_name)
         else:
             ntime, nlat, nlon = da.shape
-            box_lam = np.empty((12, nlat, nlon))
+            box_lam = np.nan*np.ones((12, nlat, nlon))
             for mo in range(1, 13):
                 print('calculating lambda for month %i' % mo)
                 for ct1 in range(nlat):
                     for ct2 in range(nlon):
                         this_ts = da.isel({'time': da['time.month'] == mo,
                                            'lat': ct1, 'lon': ct2})
+
+                        if (np.isnan((this_ts.values).astype(float))).all():
+                            continue
                         _, lam = boxcox(this_ts)
                         box_lam[mo-1, ct1, ct2] = np.min((lam, 1))  # set ceiling at 1, since pr is positively skewed
 
