@@ -689,7 +689,7 @@ def get_obs(case, this_varname, this_filename, valid_years, mode_lag, cvdp_file,
         X_units = 'mm/day'
     elif X_units == 'mm':  # GPCC, mm total over month
         days_per_month = [calendar.monthrange(int(y), int(m))[1] for y, m in zip(X_year, X_month)]
-        X /= np.array(days_per_month)
+        X /= np.array(days_per_month)[:, np.newaxis, np.newaxis]
         X_units = 'mm/day'
 
     # Check unit consistency
