@@ -87,6 +87,8 @@ if __name__ == '__main__':
             check_call(cmd.split())
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
+            # save
+            daX.to_netcdf('%s/orig_data.nc' % var_dir)
             if v == 'pr':  # perform transform to normalize data
                 print('normalizing precip')
                 daX = olens_utils.transform(daX, pr_transform, var_dir)
