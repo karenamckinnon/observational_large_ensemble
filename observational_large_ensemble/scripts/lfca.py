@@ -4,6 +4,7 @@ import numpy as np
 from scipy.signal import butter, sosfiltfilt
 from glob import glob
 from datetime import timedelta
+from observational_large_ensemble import utils as olens_utils
 
 
 procdir = '/glade/work/mckinnon/obsLE/proc'
@@ -132,6 +133,10 @@ for m in members:
     da_cesm *= 1000*24*60*60
     # need to load to speed up compute
     da_cesm = da_cesm.load()
+
+    # transform
+    da_cesm = olens_utils.transform(da_cesm, 'boxcox', '/glade/work/mckinnon/obsLE/parameters/LE-%03i/pr' % m)
+
     LFP_save = np.empty((nlat*nlon, n_lfc_save, 12))
     LFC_save = np.empty((nyrs, n_lfc_save, 12))
     for month in range(1, 13):
@@ -167,5 +172,5 @@ LFPs = xr.concat(all_LFP, dim='member')
 LFCs = xr.concat(all_LFC, dim='member')
 
 # save
-LFPs.to_netcdf('%s/LFPs_precip_CESM1-LE.nc' % procdir)
-LFCs.to_netcdf('%s/LFCs_precip_CESM1-LE.nc' % procdir)
+LFPs.to_netcdf('%s/LFPs_precip_boxcox_CESM1-LE.nc' % procdir)
+LFCs.to_netcdf('%s/LFCs_precip_boxcox_CESM1-LE.nc' % procdir)
