@@ -127,7 +127,6 @@ for m in members:
     da_cesm = ds_cesm['PRECC'] + ds_cesm['PRECL'] + ds_cesm['PRECSL'] + ds_cesm['PRECSC']
     da_cesm = da_cesm.assign_coords(time=da_cesm.time-timedelta(days=1))
     da_cesm = da_cesm.sel({'time': np.isin(da_cesm['time.year'], valid_years)})
-    da_cesm = da_cesm.assign_coords({'lat': np.round(da_cesm.lat, 3)})
 
     # change to mm /day
     da_cesm *= 1000*24*60*60
@@ -159,7 +158,8 @@ for m in members:
 
     LFP_da = xr.DataArray(LFP_save.reshape((nlat, nlon, n_lfc_save, 12)),
                           dims=['lat', 'lon', 'LFP', 'month'],
-                          coords=[da_cesm.lat, da_cesm.lon, np.arange(1, 6), np.arange(1, 13)])
+                          coords=[np.round(da_cesm.lat, 3), np.round(da_cesm.lon, 3),
+                                  np.arange(1, 6), np.arange(1, 13)])
 
     LFC_da = xr.DataArray(LFC_save,
                           dims=['year', 'LFP', 'month'],

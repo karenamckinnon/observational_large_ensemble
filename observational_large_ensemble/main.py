@@ -41,7 +41,7 @@ if __name__ == '__main__':
     if args.case == 'obs':
         from params import karen_params_obs as params
     elif 'LE' in args.case:
-        from params import karen_params_cesm as params
+        from params import karen_params_cesm_short as params
     valid_years = params.valid_years
     cvdp_loc = params.cvdp_loc
     AMO_cutoff_freq = params.AMO_cutoff_freq
