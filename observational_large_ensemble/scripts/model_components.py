@@ -6,7 +6,7 @@ from subprocess import check_call
 import pandas as pd
 
 
-def fit_linear_model(da, df, this_varname, workdir):
+def fit_linear_model(da, df, this_varname, workdir, predictors_names):
     """Save linear regression model parameters.
 
     Parameters
@@ -19,6 +19,8 @@ def fit_linear_model(da, df, this_varname, workdir):
         Variable name for which to fit regression
     workdir : str
         Where to save output
+    predictors_names : list
+        Names of covariates to use
 
     Returns
     -------
@@ -35,10 +37,6 @@ def fit_linear_model(da, df, this_varname, workdir):
     attrs = da.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
-
-    predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO_lowpass']
-    if (np.std(df.loc[:, 'F'].values) == 0):  # remove trend predictor, will happen for SLP
-        predictors_names.remove('F')
 
     # Create dataset to save beta values
     ds_beta = xr.Dataset(coords={'month': np.arange(1, 13),
@@ -82,7 +80,7 @@ def fit_linear_model(da, df, this_varname, workdir):
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                         AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                        mode_lag, long_varnames, data_names, pr_transform):
+                        mode_lag, long_varnames, data_names, pr_transform, predictors_names):
 
     for this_varname in varnames:
 
@@ -142,28 +140,38 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             # Add a constant
             df_shifted = df_shifted.assign(constant=np.ones(len(df_shifted)))
 
-            # Add the forced trend
-            if this_varname != 'slp':
+            assert (df_shifted.month.values == climate_noise['time.month'].values).all()
+
+            mean = (ds_beta.beta_constant[modes_idx, ...].values *
+                    df_shifted['constant'][:, np.newaxis, np.newaxis])
+
+            # Add in the relevant components
+            data = mean + climate_noise.values
+            if 'F' in predictors_names:
                 forced_file = '%s/%s/%s_forced.nc' % (output_dir, this_varname, this_varname)
                 daF = xr.open_dataarray(forced_file)
                 # Check that the time aligns
                 assert (daF['time.month'] == climate_noise['time.month']).all()
                 assert (daF['time.year'] == climate_noise['time.year']).all()
+                data += daF.values
 
-            assert (df_shifted.month.values == climate_noise['time.month'].values).all()
-            AMO_lowpass = (ds_beta.beta_AMO_lowpass[modes_idx, ...].values *
-                           df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis])
-            ENSO = (ds_beta.beta_ENSO[modes_idx, ...].values *
-                    df_shifted['ENSO'][:, np.newaxis, np.newaxis])
-            PDO_orth = (ds_beta.beta_PDO_orth[modes_idx, ...].values *
-                        df_shifted['PDO_orth'][:, np.newaxis, np.newaxis])
-            mean = (ds_beta.beta_constant[modes_idx, ...].values *
-                    df_shifted['constant'][:, np.newaxis, np.newaxis])
+            if 'ENSO' in predictors_names:
 
-            if this_varname != 'slp':
-                data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean + daF.values
-            else:
-                data = climate_noise.values + AMO_lowpass + ENSO + PDO_orth + mean
+                ENSO = (ds_beta.beta_ENSO[modes_idx, ...].values *
+                        df_shifted['ENSO'][:, np.newaxis, np.newaxis])
+                data += ENSO
+
+            if 'PDO_orth' in predictors_names:
+
+                PDO_orth = (ds_beta.beta_PDO_orth[modes_idx, ...].values *
+                            df_shifted['PDO_orth'][:, np.newaxis, np.newaxis])
+                data += PDO_orth
+
+            if 'AMO_lowpass' in predictors_names:
+
+                AMO_lowpass = (ds_beta.beta_AMO_lowpass[modes_idx, ...].values *
+                               df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis])
+                data += AMO_lowpass
 
             new_values = climate_noise.copy(data=data)
             if this_varname == 'pr':

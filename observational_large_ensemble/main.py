@@ -41,7 +41,7 @@ if __name__ == '__main__':
     if args.case == 'obs':
         from params import karen_params_obs as params
     elif 'LE' in args.case:
-        from params import karen_params_cesm_short as params
+        from params import karen_params_cesm as params
     valid_years = params.valid_years
     cvdp_loc = params.cvdp_loc
     AMO_cutoff_freq = params.AMO_cutoff_freq
@@ -49,8 +49,9 @@ if __name__ == '__main__':
     workdir_base = params.workdir_base
     output_dir = params.output_dir
     pr_transform = params.pr_transform
+    varnames = params.varnames
+    predictors_names = params.predictors_names
 
-    varnames = ['pr', 'tas', 'slp']
     long_varnames = {'tas': 'near surface air temperature',
                      'pr': 'precipitation',
                      'slp': 'sea level pressure'}
@@ -92,8 +93,8 @@ if __name__ == '__main__':
             if v == 'pr':  # perform transform to normalize data
                 print('normalizing precip')
                 daX = olens_utils.transform(daX, pr_transform, var_dir)
-            mc.fit_linear_model(daX, df_shifted, v, workdir)
-            if v != 'slp':  # forced component for SLP assumed to be zero
+            mc.fit_linear_model(daX, df_shifted, v, workdir, predictors_names)
+            if 'F' in predictors_names:
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
 
     elif 'LE' in args.case:
@@ -135,8 +136,8 @@ if __name__ == '__main__':
                 print('normalizing precip')
                 daX = olens_utils.transform(daX, pr_transform, var_dir)
             print('fitting model')
-            mc.fit_linear_model(daX, df_shifted, v, workdir)
-            if v != 'slp':  # forced component for SLP assumed to be zero
+            mc.fit_linear_model(daX, df_shifted, v, workdir, predictors_names)
+            if 'F' in predictors_names:
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
 
     # Calculate block size
@@ -151,4 +152,4 @@ if __name__ == '__main__':
     print('putting it all together')
     mc.combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                            AMO_surr, ENSO_surr, PDO_orth_surr, mode_months, valid_years,
-                           mode_lag, long_varnames, data_names, pr_transform)
+                           mode_lag, long_varnames, data_names, pr_transform, predictors_names)
