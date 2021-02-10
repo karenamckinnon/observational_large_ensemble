@@ -34,6 +34,11 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
     # Add constant
     df = df.assign(constant=np.ones(len(df)))
 
+    # Set all mode predictors to unit standard deviation
+    df['ENSO'] /= np.std(df['ENSO'])
+    df['PDO_orth'] /= np.std(df['PDO_orth'])
+    df['AMO_lowpass'] /= np.std(df['AMO_lowpass'])
+
     attrs = da.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
     da.attrs = attrs
@@ -120,10 +125,11 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             ENSO_ts = ENSO_surr[:, kk]
             PDO_orth_ts = PDO_orth_surr[:, kk]
 
+            # combine into dataframe, setting all to unity std
             mode_df = pd.DataFrame({'month': mode_months,
-                                    'AMO_lowpass': AMO_ts,
-                                    'ENSO': ENSO_ts,
-                                    'PDO_orth': PDO_orth_ts})
+                                    'AMO_lowpass': AMO_ts/np.std(AMO_ts),
+                                    'ENSO': ENSO_ts/np.std(ENSO_ts),
+                                    'PDO_orth': PDO_orth_ts/np.std(PDO_orth_ts)})
 
             # Use the indices for one month before the climate response
             df_shifted = olens_utils.shift_df(mode_df, mode_lag, ['month'])
@@ -242,18 +248,16 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members,
             tmp = olens_utils.iaaft(df['PDO_orth'].values)
         pdo_surr[:, kk] = tmp[0]
 
-        # AMO (create surrogates on unfiltered data)
-        tmp = olens_utils.iaaft(df['AMO'].values)
+        # AMO
+        tmp = olens_utils.iaaft(df['AMO_lowpass'].values)
         while type(tmp) == int:  # case of no convergence
-            tmp = olens_utils.iaaft(df['AMO'].values)
+            tmp = olens_utils.iaaft(df['AMO_lowpass'].values)
 
         # Perform lowpass filter on AMO
         if AMO_cutoff_freq > 0:
             amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
         else:  # no filter
             amo_lowpass = tmp[0]
-        # Reset to unit sigma
-        amo_lowpass /= np.std(amo_lowpass)
         amo_surr[:, kk] = amo_lowpass
 
     return enso_surr, pdo_surr, amo_surr, months
