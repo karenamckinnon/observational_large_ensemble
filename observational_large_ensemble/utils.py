@@ -764,7 +764,7 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
 
         has_data = ~np.isnan(da[-1, ...].values)
 
-        block_save = np.nan*np.ones((12, nlat*nlon))
+        block_save = np.nan*np.ones((12, nlat, nlon))
         datavec = da.values[:, has_data]
 
         # We want to know the extent to which there is year-to-year memory (not seasonal)
@@ -801,7 +801,6 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
                 block_est[i, j] = L
 
         block_save[:, has_data] = block_est
-        block_save = block_save.reshape((12, nlat, nlon))
         da_block = xr.DataArray(data=block_save,
                                 dims=['month', 'lat', 'lon'],
                                 coords={'month': np.arange(1, 13), 'lat': da.lat, 'lon': da.lon})
