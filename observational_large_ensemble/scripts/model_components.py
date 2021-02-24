@@ -153,6 +153,23 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
 
             # Add in the relevant components
             data = mean + climate_noise.values
+
+            # Save the mean + climate noise only for analysis
+            no_modes_F = climate_noise.copy(data=data)
+            if this_varname == 'pr':
+                # model was fit on transformed precip, so translate back to original units
+                no_modes_F = olens_utils.retransform(no_modes_F, pr_transform, '%s/%s' % (workdir, this_varname))
+
+            description = ('Member %04d of the Observational Large Ensemble (mean and noise only) ' % (kk + 1) +
+                           'for %s. ' % (long_varnames[this_varname]) +
+                           'Data is from %s.' % data_names[this_varname])
+            no_modes_F.attrs['description'] = description
+            filename = '%s/%s/%s_member%04d_noise.nc' % (output_dir, this_varname, this_varname, kk + 1)
+            no_modes_F = no_modes_F.rename(this_varname)
+            no_modes_F.to_netcdf(filename)
+
+            del no_modes_F
+
             if 'F' in predictors_names:
                 forced_file = '%s/%s/%s_forced.nc' % (output_dir, this_varname, this_varname)
                 daF = xr.open_dataarray(forced_file)
