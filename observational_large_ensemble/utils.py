@@ -966,3 +966,55 @@ def retransform(da_t, transform_type, workdir):
     da_rt = da_rt.fillna(0)
 
     return da_rt
+
+
+def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
+    """Calculate different metrics for temporal variability on members of model or statistical ensembles.
+
+    Parameters
+    ----------
+    da : xarray.DataArray
+        Contains climate data with standard dimension ordering: time / lat / lon
+    metric_name : string
+        Type of metric to calculate
+    fs : int
+        Sampling frequency of data (1 = annual, 1/12 = monthly)
+    L : float
+        Cutoff frequency for filter
+    order : int
+        Order of filter (forward/backward so effectively doubled)
+
+    Returns
+    -------
+    da_metric : xarray.DataArray
+        A lat / lon array with the value of the metric
+    """
+
+    if 'var_' in metric_name:
+        btype = metric_name.split('_')[-1]
+        # use reflective boundary conditions for filtering
+        stack_vals = np.vstack((da.values[::-1, :, :], da.values, da.values[::-1, :, :]))
+        vals = lowpass_butter(fs, L, order, stack_vals, axis=0, btype=btype)
+        ntime = da.shape[0]
+        stack_time = np.arange(-ntime, ntime*2)
+        orig_time = np.arange(ntime)
+        tmp = da.copy(data=vals[np.isin(stack_time, orig_time), :, :])
+        da_metric = tmp.var('year')
+
+    elif metric_name == 'IQ_range':
+        da_metric = (da.quantile(q=0.75, dim='year') -
+                     da.quantile(q=0.25, dim='year'))
+
+    elif metric_name == 'max_val':
+        da_metric = da.max('year')
+
+    elif 'yr_event' in metric_name:
+        return_period = int(metric_name.split('yr')[0])
+        ntime = da.shape[0]
+        RI = (ntime + 1)/np.arange(1, ntime + 1)
+        vals_sorted = np.sort(da.values, axis=0)[::-1, :, :]
+        RI_idx = np.argmin(np.abs(RI - return_period))
+        event_magnitude = vals_sorted[RI_idx, :, :]
+        da_metric = da[0, :, :].copy(data=event_magnitude)
+
+    return da_metric
