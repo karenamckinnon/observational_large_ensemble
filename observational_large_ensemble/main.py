@@ -15,8 +15,6 @@ def setup(varname, filename, AMO_cutoff_freq, mode_lag, pr_transform, workdir_ba
                   'mode_lag': mode_lag,
                   'pr_transform': pr_transform}
 
-    # Output folder, named with current date
-    # now = datetime.strftime(datetime.now(), '%Y%m%d')
     workdir = '%s' % (workdir_base)
     if not os.path.isdir(workdir):
         cmd = 'mkdir -p %s' % workdir
@@ -86,6 +84,10 @@ if __name__ == '__main__':
             var_dir = '%s/%s' % (workdir, v)
             cmd = 'mkdir -p %s' % var_dir
             check_call(cmd.split())
+
+            # create output directory
+            cmd = 'mkdir -p %s/%s' % (output_dir, v)
+            check_call(cmd.split())
             daX, df_shifted, _ = olens_utils.get_obs(args.case, v, f, valid_years, mode_lag,
                                                      cvdp_file, AMO_cutoff_freq, name_conversion)
             # save
@@ -126,6 +128,9 @@ if __name__ == '__main__':
             # create directory for saving some params
             var_dir = '%s/%s' % (workdir, v)
             cmd = 'mkdir -p %s' % var_dir
+            check_call(cmd.split())
+            # create output directory
+            cmd = 'mkdir -p %s/%s' % (output_dir, v)
             check_call(cmd.split())
 
             print('getting data')
