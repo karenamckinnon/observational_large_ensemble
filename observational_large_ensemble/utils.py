@@ -990,6 +990,7 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
     """
 
     if 'var_' in metric_name:
+        edge_length = int(1/(2*L))  # don't include edges in variance calculation
         btype = metric_name.split('_')[-1]
         # use reflective boundary conditions for filtering
         stack_vals = np.vstack((da.values[::-1, :, :], da.values, da.values[::-1, :, :]))
@@ -997,6 +998,7 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
         ntime = da.shape[0]
         stack_time = np.arange(-ntime, ntime*2)
         orig_time = np.arange(ntime)
+        orig_time = orig_time[edge_length:-edge_length]
         tmp = da.copy(data=vals[np.isin(stack_time, orig_time), :, :])
         da_metric = tmp.var('year')
 
