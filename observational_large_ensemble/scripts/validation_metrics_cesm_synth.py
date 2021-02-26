@@ -69,6 +69,7 @@ if __name__ == '__main__':
             this_da_obsle = this_da_obsle.load()
             da_metrics = []
             for metric_name in metrics:
+                print(metric_name)
                 if 'yr_event' in metric_name:  # want to append time and ensemble to get estimate
                     return_period = int(metric_name.split('yr')[0])
                     da_size = this_da_obsle.shape
@@ -80,27 +81,27 @@ if __name__ == '__main__':
                     RI_idx = np.argmin(np.abs(RI - return_period))
                     event_magnitude = vals_sorted[RI_idx, :, :]
                     da_metric = this_da_obsle[0, 0, :, :].copy(data=event_magnitude)
-
-                    # also want to calculate the other return periods to compare to the CESM1-LE
-                    da_RI = []
-                    for r in return_periods_save:
-                        RI_idx = np.argmin(np.abs(RI - r))
-                        event_magnitude = vals_sorted[RI_idx, :, :]
-                        da_tmp = this_da_obsle[0, 0, :, :].copy(data=event_magnitude)
-                        da_RI.append(da_tmp)
-
-                    da_RI = xr.concat(da_RI, dim='return_period')
-                    da_RI['return_period'] = return_periods_save
-                    da_ens_extremes_obsle.append(da_RI)
                 else:
                     da_metric = olens_utils.calc_variability_metrics(this_da_obsle, metric_name)
                     da_metric = da_metric.mean('obsle_member')
-                    da_metrics.append(da_metric)
+
                 da_metrics.append(da_metric)
 
             da_metrics = xr.concat(da_metrics, dim='metric_name')
             da_metrics['metric_name'] = np.array(metrics)
             da_metrics_seasons.append(da_metrics)
+
+            # also want to calculate the other return periods to compare to the CESM1-LE
+            da_RI = []
+            for r in return_periods_save:
+                RI_idx = np.argmin(np.abs(RI - r))
+                event_magnitude = vals_sorted[RI_idx, :, :]
+                da_tmp = this_da_obsle[0, 0, :, :].copy(data=event_magnitude)
+                da_RI.append(da_tmp)
+
+            da_RI = xr.concat(da_RI, dim='return_period')
+            da_RI['return_period'] = return_periods_save
+            da_ens_extremes_obsle.append(da_RI)
 
         da_metrics_seasons = xr.concat(da_metrics_seasons, dim='season')
         da_metrics_seasons['season'] = np.array(seasons)
