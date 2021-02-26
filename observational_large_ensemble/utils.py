@@ -967,7 +967,7 @@ def retransform(da_t, transform_type, workdir):
     return da_rt
 
 
-def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
+def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3, b=0.44):
     """Calculate different metrics for temporal variability on members of model or statistical ensembles.
 
     Parameters
@@ -982,6 +982,8 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
         Cutoff frequency for filter
     order : int
         Order of filter (forward/backward so effectively doubled)
+    b : float
+        Modification for return period calculation (Gringorten = 0.44)
 
     Returns
     -------
@@ -993,13 +995,13 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
         edge_length = int(1/(2*L))  # don't include edges in variance calculation
         btype = metric_name.split('_')[-1]
         # use reflective boundary conditions for filtering
-        stack_vals = np.vstack((da.values[::-1, :, :], da.values, da.values[::-1, :, :]))
+        stack_vals = np.vstack((da.values[::-1, ...], da.values, da.values[::-1, ...]))
         vals = lowpass_butter(fs, L, order, stack_vals, axis=0, btype=btype)
         ntime = da.shape[0]
         stack_time = np.arange(-ntime, ntime*2)
         orig_time = np.arange(ntime)
         orig_time = orig_time[edge_length:-edge_length]
-        tmp = (da.isel({'year': orig_time})).copy(data=vals[np.isin(stack_time, orig_time), :, :])
+        tmp = (da.isel({'year': orig_time})).copy(data=vals[np.isin(stack_time, orig_time), ...])
         da_metric = tmp.var('year')
 
     elif metric_name == 'IQ_range':
@@ -1012,8 +1014,8 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
     elif 'yr_event' in metric_name:
         return_period = int(metric_name.split('yr')[0])
         ntime = da.shape[0]
-        RI = (ntime + 1)/np.arange(1, ntime + 1)
-        vals_sorted = np.sort(da.values, axis=0)[::-1, :, :]
+        RI = (ntime + 1 - 2*b)/(np.arange(1, ntime + 1) - b)
+        vals_sorted = np.sort(da.values, axis=0)[::-1, ...]
         RI_idx = np.argmin(np.abs(RI - return_period))
         event_magnitude = vals_sorted[RI_idx, :, :]
         da_metric = da[0, :, :].copy(data=event_magnitude)

@@ -19,7 +19,7 @@ if __name__ == '__main__':
 
     m = args.member
     version = 'main'
-    metrics = 'var_low', 'var_high', 'IQ_range', '85yr_event', '50yr_event'
+    metrics = 'var_low', 'var_high', 'IQ_range', '150yr_event', '55yr_event', '33yr_event'
     seasons = 'DJF', 'JJA'
     members = np.hstack((np.arange(1, 36), np.arange(101, 106)))
     valid_years = np.arange(1921, 2006)
@@ -29,14 +29,17 @@ if __name__ == '__main__':
     L = 1/10.  # above or below decadal
     order = 3
 
+    # Gringorten formula for return periods
+    b = 0.44
+
     obsledir = '/glade/scratch/mckinnon/obsLE/output_v-%s' % version
     savedir = '/glade/work/mckinnon/obsLE/proc'
 
-    return_periods_save = np.array([85, 100, 200, 300])
+    return_periods_save = np.array([33, 55, 150, 300, 500])
 
     # Obs-LE analysis
-    obsle_savename = '%s/obsle_v-%s_5metrics_member_%03i.nc' % (savedir, version, m)
-    obsle_savename_ens_extremes = '%s/obsle_v-%s_ens_extreme_metrics_member_%03i.nc' % (savedir, version, m)
+    obsle_savename = '%s/cesm_synth_v-%s_5metrics_member_%03i.nc' % (savedir, version, m)
+    obsle_savename_ens_extremes = '%s/cesm_synth_v-%s_ens_extreme_metrics_member_%03i.nc' % (savedir, version, m)
 
     if os.path.isfile(obsle_savename):
         ds_metrics_obsle = xr.open_dataset(obsle_savename)
@@ -66,18 +69,24 @@ if __name__ == '__main__':
             # and desired year
             this_da_obsle = this_da_obsle.sel({'year': np.isin(this_da_obsle['year'], valid_years)})
 
+            # transpose to have time, member, lat, lon
+            this_da_obsle = this_da_obsle.transpose('year', 'obsle_member', 'lat', 'lon')
+
             this_da_obsle = this_da_obsle.load()
             da_metrics = []
+
+            # Do some prep for return period calculations
+            da_size = this_da_obsle.shape
+            ntime = da_size[0]*da_size[1]  # combine year and ensemble to estimate extremes
+            RI = (ntime + 1 - 2*b)/(np.arange(1, ntime + 1) - b)
+            vals = this_da_obsle.values.reshape((da_size[0]*da_size[1], da_size[2], da_size[3]))
+            vals_sorted = np.sort(vals, axis=0)[::-1, :, :]
+
             for metric_name in metrics:
                 print(metric_name)
                 if 'yr_event' in metric_name:  # want to append time and ensemble to get estimate
                     return_period = int(metric_name.split('yr')[0])
-                    da_size = this_da_obsle.shape
                     # group time and obs-le member together
-                    vals = this_da_obsle.values.reshape((da_size[0]*da_size[1], da_size[2], da_size[3]))
-                    vals_sorted = np.sort(vals, axis=0)[::-1, :, :]
-                    ntime = da_size[0]*da_size[1]
-                    RI = (ntime + 1)/np.arange(1, ntime + 1)
                     RI_idx = np.argmin(np.abs(RI - return_period))
                     event_magnitude = vals_sorted[RI_idx, :, :]
                     da_metric = this_da_obsle[0, 0, :, :].copy(data=event_magnitude)
