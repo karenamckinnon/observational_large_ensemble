@@ -12,7 +12,7 @@ import observational_large_ensemble.utils as olens_utils
 
 version = 'main'
 
-metrics = 'var_low', 'var_high', 'IQ_range', '85yr_event', '50yr_event'
+metrics = 'var_low', 'var_high', 'IQ_range', '150yr_event', '55yr_event', '33yr_event'
 seasons = 'DJF', 'JJA'
 members = np.hstack((np.arange(1, 36), np.arange(101, 106)))
 valid_years = np.arange(1921, 2006)
@@ -22,16 +22,19 @@ fs = 1  # per year
 L = 1/10.  # above or below decadal
 order = 3
 
+# Gringorten formula for return periods
+b = 0.44
+
 cesmdir = '/gpfs/fs1/collections/cdg/data/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly'
 obsledir = '/glade/scratch/mckinnon/obsLE/output_v-%s' % version
 
-return_periods_save = np.array([85, 100, 200, 300])
+return_periods_save = np.array([33, 55, 150, 300, 500])
 
 # CESM-LE analysis
 cesm_savename = '/glade/work/mckinnon/obsLE/proc/cesm_v-%s_5metrics.nc' % version
 cesm_savename_ens_extremes = '/glade/work/mckinnon/obsLE/proc/cesm_v-%s_ens_extreme_metrics.nc' % version
 
-if os.path.isfile(cesm_savename):
+if 0: #os.path.isfile(cesm_savename):
     ds_metrics = xr.open_dataset(cesm_savename)
     da_ens_extremes = xr.open_dataarray(cesm_savename_ens_extremes)
 else:
@@ -104,7 +107,7 @@ else:
     vals = all_cesm.values.reshape((da_size[0], da_size[1], da_size[2], da_size[3]*da_size[4]))
     vals_sorted = np.sort(vals, axis=-1)[:, :, :, ::-1]
     ntime = da_size[3]*da_size[4]  # ensemble and time are used interchangeably
-    RI = (ntime + 1)/np.arange(1, ntime + 1)
+    RI = (ntime + 1 - 2*b)/(np.arange(1, ntime + 1) - b)
 
     da_ens_extremes = []
     for r in return_periods_save:

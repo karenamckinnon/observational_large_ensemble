@@ -999,7 +999,7 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3):
         stack_time = np.arange(-ntime, ntime*2)
         orig_time = np.arange(ntime)
         orig_time = orig_time[edge_length:-edge_length]
-        tmp = da.copy(data=vals[np.isin(stack_time, orig_time), :, :])
+        tmp = (da.isel({'year': orig_time})).copy(data=vals[np.isin(stack_time, orig_time), :, :])
         da_metric = tmp.var('year')
 
     elif metric_name == 'IQ_range':
