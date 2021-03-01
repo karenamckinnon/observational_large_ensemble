@@ -58,7 +58,7 @@ if __name__ == '__main__':
         da_metrics_seasons = []
         da_ens_extremes_obsle = []
         for this_season in seasons:
-
+            print(this_season)
             # pull out desired season
             this_da_obsle = da_obsle.sel({'time': da_obsle['time.season'] == this_season})
             this_da_obsle['time'] = this_da_obsle['time.year']
