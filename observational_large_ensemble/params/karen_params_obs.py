@@ -3,7 +3,7 @@
 import numpy as np
 
 version_name = 'main'
-valid_years = np.arange(1921, 2017)  # for obs
+valid_years = np.arange(1921, 2020)  # for obs
 cvdp_loc = '/glade/work/mckinnon/CVDP'
 AMO_cutoff_freq = 1/20  # Cut off frequency for Butterworth filter of AMO (1/years)
 mode_lag = 0  # number of months to lag between mode time series and climate response
