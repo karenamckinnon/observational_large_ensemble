@@ -63,7 +63,7 @@ if __name__ == '__main__':
         slp_dir = params.slp_dir
         cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
         file_dict = {'tas': '%s/Complete_TAVG_LatLong1.nc' % tas_dir,
-                     'pr': '%s/precip.mon.total.1x1.v2018.nc' % pr_dir,
+                     'pr': '%s/full_data_monthly_v2020.nc' % pr_dir,
                      'slp': '%s/prmsl.mon.mean.nc' % slp_dir}
 
         filenames = []
