@@ -61,7 +61,7 @@ if __name__ == '__main__':
         tas_dir = params.tas_dir
         pr_dir = params.pr_dir
         slp_dir = params.slp_dir
-        cvdp_file = '%s/HadISST.cvdp_data.1920-2017.nc' % cvdp_loc
+        cvdp_file = '%s/HadISST.cvdp_data.1920-2018.nc' % cvdp_loc
         file_dict = {'tas': '%s/Complete_TAVG_LatLong1.nc' % tas_dir,
                      'pr': '%s/full_data_monthly_v2020.nc' % pr_dir,
                      'slp': '%s/prmsl.mon.mean.nc' % slp_dir}
@@ -105,7 +105,7 @@ if __name__ == '__main__':
         cesm_names = [name_conversion[v] for v in varnames]
         surr_prefix = 'CESM1-CAM5-BGC-LE_#1_surrogate_mode_time_series_020'
         this_member = int((args.case).split('-')[-1])
-        cvdp_file = '%s/CESM1-CAM5-BGC-LE_#%i.cvdp_data.1920-2017.nc' % (cvdp_loc, this_member)
+        cvdp_file = '%s/CESM1-CAM5-BGC-LE_#%i.cvdp_data.1920-2018.nc' % (cvdp_loc, this_member)
 
         # Historical filenames for CESM. Will need to append part of RCP8.5 to get full period
         filenames = []
