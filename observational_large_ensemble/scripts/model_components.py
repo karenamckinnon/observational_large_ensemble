@@ -70,10 +70,25 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
 
         BETA[month-1, ...] = np.array(beta).T.reshape((nlat, nlon, len(predictors_names)))
 
+    # project BETA onto two harmonics: annual and semi-annual
+    time_vec = pd.date_range(start='1950-01-01', periods=365, freq='D')
+    doy = xr.DataArray(np.arange(1, 366), coords={'time': time_vec}, dims='time')
+    t_basis = (doy.groupby('time.month').mean()/365).values
+    nbases = 2
+    nt = len(t_basis)
+
+    bases = np.empty((nbases, nt), dtype=complex)
+    for counter in range(nbases):
+        bases[counter, :] = np.exp(2*(counter + 1)*np.pi*1j*t_basis)
+
+    coeff = 2/nt*(np.dot(bases, BETA.reshape((12, nlat*nlon*len(predictors_names)))))
+    rec = np.real(np.dot(bases.T, np.conj(coeff))).reshape((12, nlat, nlon, len(predictors_names)))
+    rec += np.mean(BETA, axis=0)
+
     da_residual = da.copy(data=residual)
     da_residual.attrs
     for counter, name in enumerate(predictors_names):
-        kwargs = {'beta_%s' % name: (('month', 'lat', 'lon'), BETA[..., counter])}
+        kwargs = {'beta_%s' % name: (('month', 'lat', 'lon'), rec[..., counter])}
         ds_beta = ds_beta.assign(**kwargs)
 
     # Save to netcdf
