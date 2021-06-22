@@ -41,7 +41,6 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
 
     attrs = da.attrs
     attrs['description'] = 'Residuals after removing constant, trend, and regression patterns from ENSO, PDO, AMO.'
-    da.attrs = attrs
 
     # Create dataset to save beta values
     ds_beta = xr.Dataset(coords={'month': np.arange(1, 13),
@@ -49,7 +48,6 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
                                  'lon': da.lon},
                          attrs={'description': 'Regression coefficients for %s' % this_varname})
 
-    residual = np.empty(da.shape)
     _, nlat, nlon = np.shape(da)
     BETA = np.empty((12, nlat, nlon, len(predictors_names)))
 
@@ -65,8 +63,6 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
         X_mat = np.matrix(predictors)
 
         beta = (np.dot(np.dot((np.dot(X_mat.T, X_mat)).I, X_mat.T), y_mat))  # Max likelihood estimate
-        yhat = np.dot(X_mat, beta)
-        residual[time_idx, ...] = np.array(y_mat - yhat).reshape((ntime, nlat, nlon))
 
         BETA[month-1, ...] = np.array(beta).T.reshape((nlat, nlon, len(predictors_names)))
 
@@ -85,8 +81,29 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
     rec = np.real(np.dot(bases.T, np.conj(coeff))).reshape((12, nlat, nlon, len(predictors_names)))
     rec += np.mean(BETA, axis=0)
 
+    # Recalculate yhat and residuals with these smoothed values
+    residual = np.empty(da.shape)
+    yhat = np.empty(da.shape)
+    for month in range(1, 13):
+
+        time_idx = da['time.month'] == month
+
+        predictand = da.sel(time=da['time.month'] == month).values
+        predictors = df.loc[df['month'] == month, predictors_names].values
+        ntime, nlat, nlon = np.shape(predictand)
+
+        y_mat = np.matrix(predictand.reshape(ntime, nlat*nlon))
+        X_mat = np.matrix(predictors)
+
+        beta = rec[month - 1, ...]
+        yhat[time_idx, ...] = np.dot(X_mat, beta)
+        residual[time_idx, ...] = np.array(y_mat - yhat).reshape((ntime, nlat, nlon))
+
     da_residual = da.copy(data=residual)
-    da_residual.attrs
+    da_residual.attrs = attrs
+
+    da_yhat = da.copy(data=yhat)
+    da_yhat.attrs['description'] = 'Fitted values (non-residual)'
     for counter, name in enumerate(predictors_names):
         kwargs = {'beta_%s' % name: (('month', 'lat', 'lon'), rec[..., counter])}
         ds_beta = ds_beta.assign(**kwargs)
@@ -96,6 +113,7 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
 
     ds_beta.to_netcdf('%s/beta.nc' % var_dir)
     da_residual.to_netcdf('%s/residual.nc' % var_dir)
+    da_yhat.to_netcdf('%s/yhat.nc' % var_dir)
 
 
 def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
