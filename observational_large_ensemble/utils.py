@@ -1021,3 +1021,66 @@ def calc_variability_metrics(da, metric_name, fs=1, L=1/10., order=3, b=0.44):
         da_metric = da[0, :, :].copy(data=event_magnitude)
 
     return da_metric
+
+
+def get_time_series(this_lat, this_lon, case, varnames):
+    """Helper function to pull a single time series from either CESM or GPCC."""
+
+    cesmdir = '/gpfs/fs1/collections/cdg/data/cesmLE/CESM-CAM5-BGC-LE/atm/proc/tseries/monthly'
+
+    if 'LE' in case:
+
+        from observational_large_ensemble.params import karen_params_cesm
+
+        mode_lag = karen_params_cesm.mode_lag
+        cvdp_loc = karen_params_cesm.cvdp_loc
+        AMO_cutoff_freq = karen_params_cesm.AMO_cutoff_freq
+
+        name_conversion = {'tas': 'TREFHT', 'pr': 'PRECC', 'slp': 'PSL'}
+        cesm_names = [name_conversion[v] for v in varnames]
+        this_member = int((case).split('-')[-1])
+        cvdp_file = '%s/CESM1-CAM5-BGC-LE_#%i.cvdp_data.1920-2018.nc' % (cvdp_loc, this_member)
+
+        # Historical filenames for CESM. Will need to append part of RCP8.5 to get full period
+        filenames = []
+        for var in cesm_names:
+            file_str = '%s/%s/b.e11.B20TRC5CNBDRD.f09_g16.%03d.cam.h0.%s.??????-200512.nc' % (cesmdir, var,
+                                                                                              this_member, var)
+            this_file = glob(file_str)[0]
+            filenames.append(this_file)
+
+        daX, df_shifted, _ = get_obs(case, varnames[0], filenames,
+                                     karen_params_cesm.valid_years, mode_lag,
+                                     cvdp_file, AMO_cutoff_freq, name_conversion)
+
+        this_ts = daX.sel({'lat': this_lat, 'lon': this_lon + 360}, method='nearest')
+
+    else:
+
+        from observational_large_ensemble.params import karen_params_obs
+
+        mode_lag = karen_params_obs.mode_lag
+        cvdp_loc = karen_params_obs.cvdp_loc
+        AMO_cutoff_freq = karen_params_obs.AMO_cutoff_freq
+
+        tas_dir = karen_params_obs.tas_dir
+        pr_dir = karen_params_obs.pr_dir
+        slp_dir = karen_params_obs.slp_dir
+        cvdp_file = '%s/HadISST.cvdp_data.1920-2018.nc' % cvdp_loc
+        file_dict = {'tas': '%s/Complete_TAVG_LatLong1.nc' % tas_dir,
+                     'pr': '%s/full_data_monthly_v2020.nc' % pr_dir,
+                     'slp': '%s/prmsl.mon.mean.nc' % slp_dir}
+
+        filenames = []
+        for var in varnames:
+            filenames.append(file_dict[var])
+
+        name_conversion = {'tas': 'temperature', 'pr': 'precip', 'slp': 'prmsl'}
+
+        daX, df_shifted, _ = get_obs(case, varnames[0], filenames[0],
+                                     karen_params_obs.valid_years, mode_lag,
+                                     cvdp_file, AMO_cutoff_freq, name_conversion)
+
+        this_ts = daX.sel({'lat': this_lat, 'lon': this_lon}, method='nearest')
+
+    return this_ts, df_shifted
