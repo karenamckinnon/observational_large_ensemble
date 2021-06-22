@@ -114,7 +114,7 @@ def forced_trend(varname, cvdp_loc):
         cvdp_loc = cvdp_loc + '/'
 
     # Can use CVDP output
-    fnames = sorted(glob('%sCESM1-CAM5-BGC-LE_*.cvdp_data.1920-2017.nc' % cvdp_loc))
+    fnames = sorted(glob('%sCESM1-CAM5-BGC-LE_*.cvdp_data.*.nc' % cvdp_loc))
 
     cvdp_name = 'tas_global_avg_mon'
 
