@@ -130,7 +130,9 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
         np.random.seed(123)
         this_dir = '%s/%s' % (workdir, this_varname)
         fname_epsilon = '%s/residual.nc' % this_dir
+        fname_yhat = '%s/yhat.nc' % this_dir
         da = xr.open_dataarray(fname_epsilon)
+        da_yhat = xr.open_dataarray(fname_yhat)
         ntime, nlat, nlon = np.shape(da)
 
         fname_beta = '%s/beta.nc' % this_dir
@@ -184,8 +186,8 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             mean = (ds_beta.beta_constant[modes_idx, ...].values *
                     df_shifted['constant'][:, np.newaxis, np.newaxis])
 
-            # Add in the relevant components
-            data = mean + climate_noise.values
+            # Save one version with original F + modes, but resampled noise
+            data = da_yhat.values + climate_noise.values
 
             # Save the mean + climate noise only for analysis
             no_modes_F = climate_noise.copy(data=data)
@@ -193,7 +195,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 # model was fit on transformed precip, so translate back to original units
                 no_modes_F = olens_utils.retransform(no_modes_F, pr_transform, '%s/%s' % (workdir, this_varname))
 
-            description = ('Member %04d of the Observational Large Ensemble (mean and noise only) ' % (kk + 1) +
+            description = ('Member %04d of the Observational Large Ensemble (only noise resampled) ' % (kk + 1) +
                            'for %s. ' % (long_varnames[this_varname]) +
                            'Data is from %s.' % data_names[this_varname])
             no_modes_F.attrs['description'] = description
@@ -202,6 +204,9 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             no_modes_F.to_netcdf(filename)
 
             del no_modes_F
+
+            # Add in the relevant components
+            data = mean + climate_noise.values
 
             if 'F' in predictors_names:
                 forced_file = '%s/%s/%s_forced.nc' % (output_dir, this_varname, this_varname)
