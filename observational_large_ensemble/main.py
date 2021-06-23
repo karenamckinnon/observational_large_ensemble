@@ -150,10 +150,11 @@ if __name__ == '__main__':
     # Calculate block size
     block_use, block_use_mo = olens_utils.choose_block(workdir, varnames)
 
-    # Get surrogate modes
+    # Create and save surrogate modes
     this_seed = 456
     ENSO_surr, PDO_orth_surr, AMO_surr, mode_months = mc.create_surrogate_modes(cvdp_file, AMO_cutoff_freq,
-                                                                                this_seed, n_members, valid_years)
+                                                                                this_seed, n_members, valid_years,
+                                                                                workdir)
 
     # Put it all together, and save to netcdf files
     print('putting it all together')

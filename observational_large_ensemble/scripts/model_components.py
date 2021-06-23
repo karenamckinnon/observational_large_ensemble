@@ -96,8 +96,10 @@ def fit_linear_model(da, df, this_varname, workdir, predictors_names):
         X_mat = np.matrix(predictors)
 
         beta = rec[month - 1, ...]
-        yhat[time_idx, ...] = np.dot(X_mat, beta)
-        residual[time_idx, ...] = np.array(y_mat - yhat).reshape((ntime, nlat, nlon))
+        beta = beta.reshape((nlat*nlon, len(predictors_names)))
+        this_yhat = np.dot(X_mat, beta.T)
+        residual[time_idx, ...] = np.array(y_mat - this_yhat).reshape((ntime, nlat, nlon))
+        yhat[time_idx, ...] = np.array(this_yhat).reshape((ntime, nlat, nlon))
 
     da_residual = da.copy(data=residual)
     da_residual.attrs = attrs
@@ -248,7 +250,7 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             new_values.to_netcdf(filename)
 
 
-def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members, valid_years):
+def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members, valid_years, workdir):
     """Create random mode sets.
 
     Parameters
@@ -263,6 +265,8 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members,
         Number of mode sets to create
     valid_years : numpy.ndarray
         Array of years used to build the model
+    workdir : str
+        Where to save modes
 
     Returns
     -------
@@ -314,6 +318,12 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members,
         else:  # no filter
             amo_lowpass = tmp[0]
         amo_surr[:, kk] = amo_lowpass
+
+    ds_surr = xr.Dataset(data_vars={'ENSO_surr': (('month', 'member'), enso_surr),
+                                    'PDO_surr': (('month', 'member'), pdo_surr),
+                                    'AMO_surr': (('month', 'member'), amo_surr)},
+                         coords={'month': months, 'member': np.arange(n_ens_members)})
+    ds_surr.to_netcdf('%s/synthetic_mode_ts.nc' % workdir)
 
     return enso_surr, pdo_surr, amo_surr, months
 
