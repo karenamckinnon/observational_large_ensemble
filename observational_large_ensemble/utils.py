@@ -1053,7 +1053,7 @@ def get_time_series(this_lat, this_lon, case, varnames):
                                      karen_params_cesm.valid_years, mode_lag,
                                      cvdp_file, AMO_cutoff_freq, name_conversion)
 
-        this_ts = daX.sel({'lat': this_lat, 'lon': this_lon + 360}, method='nearest')
+        this_ts = daX.sel({'lat': this_lat, 'lon': this_lon}, method='nearest')
 
     else:
 
