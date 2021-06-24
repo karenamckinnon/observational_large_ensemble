@@ -194,8 +194,14 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             # Save the mean + climate noise only for analysis
             no_modes_F = climate_noise.copy(data=data)
             if this_varname == 'pr':
+                # use same lambda for all members of the LE
+                this_workdir = workdir
+                if 'LE-' in this_workdir:
+                    tmp = this_workdir.split('/')[-1]  # will be LE-XXX
+                    this_workdir = this_workdir.replace(tmp, 'LE-001')
+
                 # model was fit on transformed precip, so translate back to original units
-                no_modes_F = olens_utils.retransform(no_modes_F, pr_transform, '%s/%s' % (workdir, this_varname))
+                no_modes_F = olens_utils.retransform(no_modes_F, pr_transform, '%s/%s' % (this_workdir, this_varname))
 
             description = ('Member %04d of the Observational Large Ensemble (only noise resampled) ' % (kk + 1) +
                            'for %s. ' % (long_varnames[this_varname]) +
@@ -239,7 +245,11 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
             new_values = climate_noise.copy(data=data)
             if this_varname == 'pr':
                 # model was fit on transformed precip, so translate back to original units
-                new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (workdir, this_varname))
+                this_workdir = workdir
+                if 'LE-' in this_workdir:
+                    tmp = this_workdir.split('/')[-1]  # will be LE-XXX
+                    this_workdir = this_workdir.replace(tmp, 'LE-001')
+                new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (this_workdir, this_varname))
 
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[this_varname]) +
