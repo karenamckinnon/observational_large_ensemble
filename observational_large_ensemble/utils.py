@@ -882,7 +882,12 @@ def transform(da, transform_type, workdir):
     da.values = tmp
 
     if transform_type == 'boxcox':
-        lam_save_name = '%s/boxcox_lambda.nc' % workdir
+        # If looking at LE, use first member to estimate lambda for intercomparison across members
+        this_workdir = workdir
+        if 'LE-' in this_workdir:
+            tmp = this_workdir.split('/')[-1]  # will be LE-XXX
+            this_workdir = this_workdir.replace(tmp, 'LE-001')
+        lam_save_name = '%s/boxcox_lambda.nc' % this_workdir
         if os.path.isfile(lam_save_name):
             da_lam = xr.open_dataarray(lam_save_name)
         else:
