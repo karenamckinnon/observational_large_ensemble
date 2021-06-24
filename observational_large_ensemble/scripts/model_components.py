@@ -319,11 +319,12 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members,
             amo_lowpass = tmp[0]
         amo_surr[:, kk] = amo_lowpass
 
-    ds_surr = xr.Dataset(data_vars={'ENSO_surr': (('month', 'member'), enso_surr),
-                                    'PDO_surr': (('month', 'member'), pdo_surr),
-                                    'AMO_surr': (('month', 'member'), amo_surr)},
-                         coords={'month': months, 'member': np.arange(n_ens_members)})
-    ds_surr.to_netcdf('%s/synthetic_mode_ts.nc' % workdir)
+    if workdir is not None:
+        ds_surr = xr.Dataset(data_vars={'ENSO_surr': (('month', 'member'), enso_surr),
+                                        'PDO_surr': (('month', 'member'), pdo_surr),
+                                        'AMO_surr': (('month', 'member'), amo_surr)},
+                             coords={'month': months, 'member': np.arange(n_ens_members)})
+        ds_surr.to_netcdf('%s/synthetic_mode_ts.nc' % workdir)
 
     return enso_surr, pdo_surr, amo_surr, months
 
