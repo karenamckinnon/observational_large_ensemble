@@ -290,51 +290,59 @@ def create_surrogate_modes(cvdp_file, AMO_cutoff_freq, this_seed, n_ens_members,
         Months associated with the surrogate time series. Important when fit_seasonal=True
     """
 
-    # Load original versions
-    df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
-    # Subset to valid years
-    subset = np.isin(df['year'].values, valid_years)
-    df = df.loc[subset, :]
-    ntime = len(df)
-    months = df['month'].values
+    savename = '%s/synthetic_mode_ts.nc' % workdir
+    if os.path.isfile(savename):
+        ds_surr = xr.open_dataset(savename)
+        enso_surr = ds_surr['ENSO_surr'].values
+        pdo_surr = ds_surr['PDO_surr'].values
+        amo_surr = ds_surr['AMO_surr'].values
+        months = ds_surr['month'].values
+    else:
+        # Load original versions
+        df = olens_utils.create_mode_df(cvdp_file, AMO_cutoff_freq)
+        # Subset to valid years
+        subset = np.isin(df['year'].values, valid_years)
+        df = df.loc[subset, :]
+        ntime = len(df)
+        months = df['month'].values
 
-    np.random.seed(this_seed)
+        np.random.seed(this_seed)
 
-    enso_surr = np.empty((ntime, n_ens_members))
-    pdo_surr = np.empty_like(enso_surr)
-    amo_surr = np.empty_like(pdo_surr)
+        enso_surr = np.empty((ntime, n_ens_members))
+        pdo_surr = np.empty_like(enso_surr)
+        amo_surr = np.empty_like(pdo_surr)
 
-    for kk in range(n_ens_members):
-        # ENSO (accounting for seasonality of variance)
-        tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
-        while type(tmp) == int:  # case of no convergence
+        for kk in range(n_ens_members):
+            # ENSO (accounting for seasonality of variance)
             tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
-        enso_surr[:, kk] = tmp[0]
+            while type(tmp) == int:  # case of no convergence
+                tmp = olens_utils.iaaft(df['ENSO'].values, fit_seasonal=True)
+            enso_surr[:, kk] = tmp[0]
 
-        # PDO
-        tmp = olens_utils.iaaft(df['PDO_orth'].values)
-        while type(tmp) == int:  # case of no convergence
+            # PDO
             tmp = olens_utils.iaaft(df['PDO_orth'].values)
-        pdo_surr[:, kk] = tmp[0]
+            while type(tmp) == int:  # case of no convergence
+                tmp = olens_utils.iaaft(df['PDO_orth'].values)
+            pdo_surr[:, kk] = tmp[0]
 
-        # AMO
-        tmp = olens_utils.iaaft(df['AMO_lowpass'].values)
-        while type(tmp) == int:  # case of no convergence
+            # AMO
             tmp = olens_utils.iaaft(df['AMO_lowpass'].values)
+            while type(tmp) == int:  # case of no convergence
+                tmp = olens_utils.iaaft(df['AMO_lowpass'].values)
 
-        # Perform lowpass filter on AMO
-        if AMO_cutoff_freq > 0:
-            amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
-        else:  # no filter
-            amo_lowpass = tmp[0]
-        amo_surr[:, kk] = amo_lowpass
+            # Perform lowpass filter on AMO
+            if AMO_cutoff_freq > 0:
+                amo_lowpass = olens_utils.lowpass_butter(12, AMO_cutoff_freq, 3, tmp[0])
+            else:  # no filter
+                amo_lowpass = tmp[0]
+            amo_surr[:, kk] = amo_lowpass
 
-    if workdir is not None:
-        ds_surr = xr.Dataset(data_vars={'ENSO_surr': (('month', 'member'), enso_surr),
-                                        'PDO_surr': (('month', 'member'), pdo_surr),
-                                        'AMO_surr': (('month', 'member'), amo_surr)},
-                             coords={'month': months, 'member': np.arange(n_ens_members)})
-        ds_surr.to_netcdf('%s/synthetic_mode_ts.nc' % workdir)
+        if workdir is not None:
+            ds_surr = xr.Dataset(data_vars={'ENSO_surr': (('month', 'member'), enso_surr),
+                                            'PDO_surr': (('month', 'member'), pdo_surr),
+                                            'AMO_surr': (('month', 'member'), amo_surr)},
+                                 coords={'month': months, 'member': np.arange(n_ens_members)})
+            ds_surr.to_netcdf(savename)
 
     return enso_surr, pdo_surr, amo_surr, months
 
