@@ -805,7 +805,10 @@ def choose_block(parameter_dir, varnames, percentile_threshold=97):
                                 dims=['month', 'lat', 'lon'],
                                 coords={'month': np.arange(1, 13), 'lat': da.lat, 'lon': da.lon})
         da_block.to_netcdf('%s/block_size_map.nc' % this_dir)
-        new_block = np.percentile(block_est.flatten(), percentile_threshold)
+        # exclude subtropics -- many days of very low precipitation shows up as strong autocorrelation
+        mask = (np.abs(da_block.lat) > 30) | (np.abs(da_block.lat) < 10)
+        new_block = da_block.where(mask).quantile(percentile_threshold/100)
+        new_block = int(new_block.values)
         if new_block > block_use:
             block_use = new_block
 

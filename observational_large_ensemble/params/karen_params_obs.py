@@ -2,7 +2,7 @@
 
 import numpy as np
 
-version_name = 'main'
+version_name = 'noF'
 valid_years = np.arange(1921, 2019)  # for obs
 cvdp_loc = '/glade/work/mckinnon/CVDP/1920-2018'
 AMO_cutoff_freq = 1/20  # Cut off frequency for Butterworth filter of AMO (1/years)
@@ -14,4 +14,4 @@ pr_dir = '/glade/work/mckinnon/GPCC'
 slp_dir = '/glade/work/mckinnon/20CRv2c'
 pr_transform = 'boxcox'  # can be boxcox or log
 varnames = ['pr']
-predictors_names = ['constant', 'F', 'ENSO', 'PDO_orth', 'AMO_lowpass']
+predictors_names = ['constant', 'ENSO', 'PDO_orth', 'AMO_lowpass']
