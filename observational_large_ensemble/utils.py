@@ -963,6 +963,9 @@ def retransform(da_t, transform_type, workdir):
         lam_save_name = '%s/boxcox_lambda.nc' % workdir
         da_lam = xr.open_dataarray(lam_save_name)
 
+        # round all lat/lon to 3 decimal points, to avoid differences in simulations
+        da_lam = da_lam.assign_coords({'lat': np.round(da_lam.lat, 3)})
+        da_lam = da_lam.assign_coords({'lon': np.round(da_lam.lon, 3)})
         da_rt = []
         for mo in range(1, 13):
             x_rt = boxcox_reverse(da_t.sel({'time': da_t['time.month'] == mo}),
