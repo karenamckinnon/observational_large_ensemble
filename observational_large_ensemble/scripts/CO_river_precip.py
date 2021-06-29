@@ -13,7 +13,7 @@ import geojson
 from shapely.geometry import shape
 from shapely.affinity import translate
 
-version = 'main'
+version = 'noF'
 figdir = '/glade/work/mckinnon/obsLE/figs'
 geom_dir = '/glade/u/home/mckinnon/observational_large_ensemble/observational_large_ensemble/shapefiles'
 valid_years = np.arange(1921, 2006)

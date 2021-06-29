@@ -18,7 +18,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     m = args.member
-    version = 'main'
+    version = 'noF'
     metrics = 'var_low', 'var_high', 'IQ_range', '150yr_event', '55yr_event', '33yr_event'
     seasons = 'DJF', 'JJA'
     members = np.hstack((np.arange(1, 36), np.arange(101, 106)))
