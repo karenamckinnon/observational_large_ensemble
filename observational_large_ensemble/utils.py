@@ -906,7 +906,10 @@ def transform(da, transform_type, workdir):
                         if (np.isnan((this_ts.values).astype(float))).all():
                             continue
                         _, lam = boxcox(this_ts)
-                        box_lam[mo-1, ct1, ct2] = np.min((lam, 1))  # set ceiling at 1, since pr is positively skewed
+                        # set ceiling at 1, since pr is positively skewed
+                        # set floor at zero to avoid more aggressive than log transform
+                        # (tends to lead to large positive precip values that are unrealistic)
+                        box_lam[mo-1, ct1, ct2] = np.max((0, np.min((lam, 1))))
 
             # save to netcdf
             da_lam = xr.DataArray(data=box_lam,
