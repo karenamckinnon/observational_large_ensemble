@@ -916,6 +916,12 @@ def transform(da, transform_type, workdir):
                                           'lon': da.lon})
             da_lam.to_netcdf(lam_save_name)
 
+        # round all lat/lon to 3 decimal points, to avoid differences in simulations
+        da_lam = da_lam.assign_coords({'lat': np.round(da_lam.lat, 3)})
+        da_lam = da_lam.assign_coords({'lon': np.round(da_lam.lon, 3)})
+        da = da.assign_coords({'lat': np.round(da.lat, 3)})
+        da = da.assign_coords({'lon': np.round(da.lon, 3)})
+
         # transform data, separately for each month
         da_t = []
         for mo in range(1, 13):
