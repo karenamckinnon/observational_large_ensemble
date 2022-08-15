@@ -229,28 +229,27 @@ def combine_variability(varnames, workdir, output_dir, n_members, block_use_mo,
                 ENSO = (ds_beta.beta_ENSO[modes_idx, ...].values *
                         df_shifted['ENSO'][:, np.newaxis, np.newaxis])
                 data += ENSO
-
             if 'PDO_orth' in predictors_names:
 
                 PDO_orth = (ds_beta.beta_PDO_orth[modes_idx, ...].values *
                             df_shifted['PDO_orth'][:, np.newaxis, np.newaxis])
                 data += PDO_orth
-
             if 'AMO_lowpass' in predictors_names:
 
                 AMO_lowpass = (ds_beta.beta_AMO_lowpass[modes_idx, ...].values *
                                df_shifted['AMO_lowpass'][:, np.newaxis, np.newaxis])
                 data += AMO_lowpass
-
             new_values = climate_noise.copy(data=data)
+            nan_mask = ~np.isnan(new_values)  # NaNs get lost in transform
             if this_varname == 'pr':
                 # model was fit on transformed precip, so translate back to original units
                 this_workdir = workdir
                 if 'LE-' in this_workdir:
                     tmp = this_workdir.split('/')[-1]  # will be LE-XXX
                     this_workdir = this_workdir.replace(tmp, 'LE-001')
-                new_values = olens_utils.retransform(new_values, pr_transform, '%s/%s' % (this_workdir, this_varname))
-
+                new_values = olens_utils.retransform(new_values.copy(), pr_transform,
+                                                     '%s/%s' % (this_workdir, this_varname))
+                new_values = new_values.where(nan_mask)
             description = ('Member %04d of the Observational Large Ensemble ' % (kk + 1) +
                            'for %s. ' % (long_varnames[this_varname]) +
                            'Data is from %s.' % data_names[this_varname])

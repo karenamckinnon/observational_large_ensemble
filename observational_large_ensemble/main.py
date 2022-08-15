@@ -95,6 +95,8 @@ if __name__ == '__main__':
             if v == 'pr':  # perform transform to normalize data
                 print('normalizing precip')
                 daX = olens_utils.transform(daX, pr_transform, var_dir)
+            # save transform data for debugging
+            daX.to_netcdf('%s/%s/transformed_data.nc' % (output_dir, v))
             mc.fit_linear_model(daX, df_shifted, v, workdir, predictors_names)
             if 'F' in predictors_names:
                 mc.save_forced_component(df_shifted, v, output_dir, workdir)
